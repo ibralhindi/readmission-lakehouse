@@ -1,0 +1,10 @@
+---
+description: Project context
+alwaysApply: true
+---
+This is a data engineering portfolio project: a hospital readmission risk lakehouse on Azure.
+Stack: Databricks (PySpark), dbt, Airflow (Docker), Terraform, GitHub Actions, Power BI, OpenAI API.
+Architecture: medallion (bronze/silver/gold), Kimball star schema in gold.
+Source data: Synthea synthetic FHIR.
+Dev environment: WSL2 Ubuntu, Python 3.12, uv for packaging.
+The project must be production-shaped. Treat every file as if it were going into a real codebase.

@@ -1,0 +1,86 @@
+[project]
+name = "readmission-lakehouse"
+version = "0.1.0"
+description = "Hospital readmission risk lakehouse — medallion architecture on Azure (portfolio)."
+readme = "README.md"
+authors = [{ name = "Ibrahim", email = "ibralhindi@gmail.com" }]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2,<3",
+    "python-dotenv>=1.0.0",
+    "structlog>=24.0.0",
+    "click>=8.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+    "pre-commit>=4.0.0",
+    "ipykernel>=6.0.0",
+]
+rag = [
+    "openai>=1.0.0",
+    "chromadb>=0.5.0",
+    "pypdf>=5.0.0",
+    "tiktoken>=0.8.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.21,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "A",
+    "C4",
+    "PT",
+    "RET",
+    "SIM",
+    "TID",
+    "ARG",
+    "PTH",
+    "ERA",
+    "PL",
+    "RUF",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+mypy_path = "src"
+explicit_package_bases = true
+packages = ["readmission_lakehouse"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--cov=readmission_lakehouse",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=60",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["readmission_lakehouse"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]

@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+pip-log.txt
+
+# Data (keep directory placeholders)
+data/synthea/*
+!data/synthea/.gitkeep
+data/guidelines/*.pdf
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.example.tfvars
+
+# Databricks
+.databricks/
+
+# IDE
+.idea/
+.vscode/
+
+# Environment
+.env
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing / coverage
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover

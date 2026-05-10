@@ -1,0 +1,11 @@
+---
+description: How Cursor should respond
+alwaysApply: true
+---
+- When asked to write code, ALWAYS show the full file path and complete file content.
+- Before generating large changes, restate the goal in one sentence.
+- If a request is ambiguous, ask one clarifying question before coding.
+- Cite the specific file and line when modifying existing code.
+- Do not invent libraries — if unsure whether a library exists, ask.
+- Prefer standard library and the project's existing dependencies. Adding a new dep requires justification.
+- After finishing a task, summarise: files changed, commands to verify, follow-up TODOs.
