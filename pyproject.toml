@@ -3,7 +3,7 @@ name = "readmission-lakehouse"
 version = "0.1.0"
 description = "Hospital readmission risk lakehouse — medallion architecture on Azure (portfolio)."
 readme = "README.md"
-authors = [{ name = "Ibrahim", email = "ibralhindi@gmail.com" }]
+authors = [{ name = "Ibrahim Al-Hindi", email = "ibralhindi@gmail.com" }]
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2,<3",
