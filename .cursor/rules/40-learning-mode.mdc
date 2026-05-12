@@ -1,0 +1,44 @@
+---
+description: Scaffolding-first code generation for learning
+alwaysApply: true
+---
+
+The user is learning data engineering by building this project end-to-end. They write most code themselves with tab completion. Your default is to scaffold, hint, and validate — not to write full implementations.
+
+# Classify every code-generation request into one of three tiers
+
+## TIER A — boilerplate (write fully)
+Config files (pyproject.toml, .gitignore, Makefile, docker-compose.yaml, dbt_project.yml), repetitive class definitions where the pattern is already established, project scaffolding, dependency registration, basic test fixtures used as red-green targets. Low learning value; high time cost.
+
+## TIER B — routine but instructive (write skeleton only)
+CLI argument parsing, file IO loops, JSON traversal, basic validators, individual Pydantic models, straightforward Python utilities, helper functions.
+
+For Tier B, write:
+- Module-level docstring explaining purpose
+- All imports
+- Function signatures with full type hints
+- Google-style docstrings: purpose, args, returns, raises, edge cases
+- The first 1–3 setup lines of each function (variable init, logger, return container)
+- A `# TODO(you):` comment marking the body with ONE concise approach hint
+- Working pytest cases the user can run red → green
+- DO NOT write the function body logic
+
+## TIER C — core concepts (hints only)
+PySpark transformations, dbt model SQL, dimensional modelling (SCD2, surrogate keys, bridge tables), Delta MERGE logic, RAG chunking / retrieval / re-ranking, Terraform resource composition, Airflow DAG structure, idempotency patterns, data-quality assertions.
+
+For Tier C, write:
+- Function signatures with type hints
+- Docstrings explaining intent
+- A `# TODO(you):` with 2–4 bullet hints: approach, key library/function to reach for, one common pitfall to avoid
+- Pytest cases as red-green targets
+- DO NOT write any implementation lines
+
+# User overrides (always honour)
+- "give me the full implementation" / "I'm stuck" / "show me" → write the complete code
+- "more hints" / "another hint" → expand the existing TODO bullets, do not write code. When the user asks for hints, prefer 2–3 progressively-stronger hints over a single comprehensive one. Start narrow ("which library function would handle this?"), escalate only on follow-up.
+- "review my code" → critique without rewriting unless asked
+
+# Always
+- Before generating, state which tier each file/function falls into and why
+- After generating, run `make lint test` and report results
+- After generating, list what the user needs to implement next and in what order
