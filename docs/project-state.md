@@ -92,7 +92,7 @@ readmission-lakehouse/
 - **Patients**: 11,423 (gender 50/50, deceased 11.8%, birth years 1910s–2020s)
 - **Encounters**: 664,623 (status 100% finished, class predominantly AMB; ~0.8% IMP)
 - **Conditions**: 412,692 (SNOMED CT; top codes are SDOH and minor clinical)
-- **Sample for CI**: 50 patients, 101 MB, all 22 NDJSON files preserved
+- **Working sample**: 50 patients, 101 MB, local-only (gitignored). Committed CI fixture deferred to Phase 4 when integration tests need it.
 
 ## Open issues / deferred decisions
 
@@ -101,6 +101,7 @@ readmission-lakehouse/
 - **Power BI Pro licence**: not needed for Desktop development; reassess if we want online publishing.
 - **GitHub Actions OIDC vs PAT**: choose in Phase 3 (OIDC is the production-correct path; PAT is fallback if federation setup blocks).
 - **Synthea geography**: currently Massachusetts; AU geography swap deferred unless time permits.
+- - **Committed CI fixture**: design in Phase 4. Likely 3 patients, bronzed-only, ~3–5 MB total. May need a `--bronzed-only` flag on the sampler.
 
 ## Interview talking points (accumulated)
 
