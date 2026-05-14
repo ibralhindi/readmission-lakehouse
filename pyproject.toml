@@ -12,6 +12,10 @@ dependencies = [
     "click>=8.0.0",
 ]
 
+[project.scripts]
+profile-synthea = "readmission_lakehouse.tools.profile_synthea:cli"
+sample-synthea = "readmission_lakehouse.tools.sample_synthea:cli"
+
 [dependency-groups]
 dev = [
     "ruff>=0.8.0",

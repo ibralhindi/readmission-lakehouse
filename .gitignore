@@ -17,6 +17,7 @@ pip-log.txt
 # Data (keep directory placeholders)
 data/synthea/*
 !data/synthea/.gitkeep
+data/synthea_sample/
 data/guidelines/*.pdf
 
 # Terraform
