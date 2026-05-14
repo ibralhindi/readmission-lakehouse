@@ -38,6 +38,8 @@
 | Orchestration | Apache Airflow 3.x, local Docker, Databricks operator |
 | BI | Power BI Desktop |
 | LLM | OpenAI API direct (text-embedding-3-small + gpt-4o-mini) |
+| Agent framework | LangGraph (stateful agent graph with tool calling) |
+| Agent UI | Streamlit (single-page demo) |
 | Vector store | Databricks Vector Search (or Chroma fallback) |
 
 ## Repository layout (key paths)
