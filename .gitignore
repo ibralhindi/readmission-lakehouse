@@ -50,3 +50,6 @@ htmlcov/
 .coverage
 coverage.xml
 *.cover
+
+# Personal interview prep
+docs/quiz-log.md
