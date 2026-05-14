@@ -1,4 +1,8 @@
-"""Profiler CLI tests for local Synthea NDJSON exports."""
+"""Profiler CLI tests for local Synthea NDJSON exports.
+
+These tests exercise both the CLI surface and the report-building helpers so the
+profiling output stays trustworthy as the local exploration workflow evolves.
+"""
 
 from __future__ import annotations
 
@@ -30,6 +34,7 @@ def write_ndjson(path: Path, records: list[dict[str, Any]]) -> None:
 def test_profile_cli_writes_headings_bronze_tags_and_expected_stat_sections(
     tmp_path: Path,
 ) -> None:
+    # --- Section: Arrange representative NDJSON inputs ---
     fhir_dir = tmp_path / "fhir"
     fhir_dir.mkdir()
     output_md = tmp_path / "profile.md"
@@ -124,6 +129,7 @@ def test_profile_cli_writes_headings_bronze_tags_and_expected_stat_sections(
         ],
     )
 
+    # --- Section: Run the CLI as a user would ---
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -137,6 +143,7 @@ def test_profile_cli_writes_headings_bronze_tags_and_expected_stat_sections(
 
     assert result.exit_code == 0
 
+    # --- Section: Assert the rendered Markdown summary ---
     markdown = output_md.read_text(encoding="utf-8")
 
     assert "## Patient" in markdown
@@ -157,6 +164,8 @@ def test_profile_cli_writes_headings_bronze_tags_and_expected_stat_sections(
 
 
 def test_build_encounter_stats_handles_missing_and_malformed_period_values() -> None:
+    # The helper should ignore malformed period fields instead of failing the whole profiling run,
+    # because exploratory summaries are more useful when they degrade gracefully.
     stats = build_encounter_stats(
         [
             {
@@ -188,6 +197,8 @@ def test_build_encounter_stats_handles_missing_and_malformed_period_values() -> 
 
 
 def test_build_condition_code_stats_preserves_code_display_pairing() -> None:
+    # Keeping the display alongside the code makes the Markdown output readable without losing the
+    # stable machine identifier we would use in downstream modeling.
     stats = build_condition_code_stats(
         [
             {"code": {"coding": [{"code": "40055000", "display": "Chronic sinusitis (disorder)"}]}},
@@ -206,6 +217,8 @@ def test_build_condition_code_stats_preserves_code_display_pairing() -> None:
 
 
 def test_build_patient_stats_buckets_decades_and_skips_bad_birth_dates() -> None:
+    # Bad dates should be skipped rather than coerced so the profile reflects only values that a
+    # later silver contract could parse reliably.
     stats = build_patient_stats(
         [
             {"gender": "female", "birthDate": "1982-01-01", "deceasedDateTime": None},

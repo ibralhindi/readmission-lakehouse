@@ -1,4 +1,9 @@
-"""Sample local Synthea FHIR NDJSON exports down to a patient subset."""
+"""Sample local Synthea FHIR NDJSON exports down to a patient subset.
+
+This CLI makes it cheap to create a small, relationally consistent FHIR sample
+for local development and tests. It keeps the logic deliberately simple and
+deterministic so downstream pipeline behavior is easier to reproduce.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +15,11 @@ import click
 import structlog
 from pydantic import BaseModel, ConfigDict
 
+# ``structlog`` keeps CLI logs structured so the same events read well locally and in automated
+# runs without changing the calling code.
 LOGGER = structlog.get_logger(__name__)
+# These summary rows are report-like outputs, so freezing them helps tests treat them as immutable
+# facts rather than mutable working state.
 SAMPLER_MODEL_CONFIG = ConfigDict(frozen=True)
 
 JsonObject = dict[str, Any]
@@ -27,6 +36,7 @@ class SamplingSummaryRow(BaseModel):
     pct_kept: float
 
 
+# Click wires this function into a CLI while leaving the pure helper functions easy to unit test.
 @click.command()
 @click.option(
     "--fhir-dir",
@@ -57,9 +67,11 @@ class SamplingSummaryRow(BaseModel):
 def cli(fhir_dir: str, out_dir: str, n_patients: int, seed: int) -> None:
     """Write a patient-filtered subset of local Synthea NDJSON files."""
 
+    # --- Section: Normalize CLI paths ---
     fhir_dir_path = Path(fhir_dir)
     out_dir_path = Path(out_dir)
 
+    # --- Section: Validate required inputs ---
     LOGGER.info(
         "sampling_synthea_fhir",
         fhir_dir=str(fhir_dir_path),
@@ -72,6 +84,7 @@ def cli(fhir_dir: str, out_dir: str, n_patients: int, seed: int) -> None:
         msg = f"Missing required patient file: {patient_file}"
         raise click.ClickException(msg)
 
+    # --- Section: Build the selected patient subset ---
     out_dir_path.mkdir(parents=True, exist_ok=True)
     selected_patient_ids = load_selected_patient_ids(
         patient_file=patient_file,
@@ -80,6 +93,7 @@ def cli(fhir_dir: str, out_dir: str, n_patients: int, seed: int) -> None:
     )
     patient_reference_tokens = build_patient_reference_tokens(selected_patient_ids)
 
+    # --- Section: Sample each resource file and print a summary ---
     summaries: list[SamplingSummaryRow] = []
     for input_path in iter_ndjson_files(fhir_dir_path):
         resource_type = derive_resource_type(input_path)
@@ -112,11 +126,15 @@ def derive_resource_type(input_path: Path) -> str:
 def load_selected_patient_ids(patient_file: Path, n_patients: int, seed: int) -> set[str]:
     """Select the deterministic patient subset used by the sampler CLI."""
 
+    # The CLI keeps a ``seed`` option now so a future randomized strategy can reuse the same
+    # interface without breaking callers, even though the current sampler is deterministic.
     del seed
 
+    # --- Section: Short-circuit invalid sample sizes ---
     if n_patients <= 0:
         return set()
 
+    # --- Section: Collect patient ids before deterministic truncation ---
     patient_ids: list[str] = []
     for line in patient_file.read_text(encoding="utf-8").splitlines():
         if not line.strip():
@@ -126,12 +144,15 @@ def load_selected_patient_ids(patient_file: Path, n_patients: int, seed: int) ->
         if isinstance(patient_id, str):
             patient_ids.append(patient_id)
 
+    # --- Section: Return a stable subset ---
     return set(sorted(patient_ids)[:n_patients])
 
 
 def build_patient_reference_tokens(selected_patient_ids: set[str]) -> set[str]:
     """Build the raw reference tokens used for substring-based matching."""
 
+    # Synthea references patients in both URN and ``Resource/id`` formats, so precomputing both
+    # token shapes lets the downstream line filter stay simple and consistent.
     reference_tokens: set[str] = set()
     for patient_id in selected_patient_ids:
         reference_tokens.add(f"urn:uuid:{patient_id}")
@@ -147,14 +168,19 @@ def line_matches_selected_patients(
 ) -> bool:
     """Return whether one raw NDJSON line belongs in the sampled subset."""
 
+    # --- Section: Ignore blank lines ---
     if not line.strip():
         return False
 
+    # --- Section: Parse Patient rows exactly ---
     if resource_type == "Patient":
         record = load_json_object(line)
         patient_id = record.get("id")
         return isinstance(patient_id, str) and patient_id in selected_patient_ids
 
+    # --- Section: Match linked resources cheaply ---
+    # For non-Patient files we intentionally use substring checks on the raw NDJSON line instead of
+    # parsing every record, because the reference tokens are specific enough for this local sampler.
     return any(token in line for token in patient_reference_tokens)
 
 
@@ -167,10 +193,14 @@ def sample_one_file(
 ) -> SamplingSummaryRow:
     """Stream one NDJSON file into its sampled counterpart."""
 
+    # --- Section: Initialize counters and destination ---
     records_in = 0
     records_kept = 0
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # --- Section: Stream matching lines to the output ---
+    # Grouping both file handles in one ``with`` statement is the standard way to guarantee both
+    # resources close cleanly even if sampling aborts partway through.
     with (
         input_path.open("r", encoding="utf-8") as source,
         output_path.open("w", encoding="utf-8") as target,
@@ -187,6 +217,7 @@ def sample_one_file(
             target.write(line)
             records_kept += 1
 
+    # --- Section: Return a summary row for reporting ---
     pct_kept = 0.0 if records_in == 0 else round((records_kept / records_in) * 100, 1)
     return SamplingSummaryRow(
         filename=input_path.name,

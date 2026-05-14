@@ -42,3 +42,7 @@ For Tier C, write:
 - Before generating, state which tier each file/function falls into and why
 - After generating, run `make lint test` and report results
 - After generating, list what the user needs to implement next and in what order
+
+# Commenting calibration for learning mode
+
+In addition to the rules in 10-python.mdc, when the code uses a library, decorator, or pattern the user is unlikely to have seen before (Pydantic configs, Click groups, `contextlib`, async patterns, dataclass features, generator/iterator protocols, Spark DSL idioms, dbt jinja patterns, Terraform `for_each`), add a one-sentence comment explaining the idiom in plain English. The user is learning these tools; the comment is to teach, not to insult their intelligence. One sentence is enough.

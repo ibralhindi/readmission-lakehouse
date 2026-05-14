@@ -1,4 +1,8 @@
-"""Sampler CLI tests for local Synthea NDJSON exports."""
+"""Sampler CLI tests for local Synthea NDJSON exports.
+
+These checks protect the development sampler that trims Synthea down to a
+patient subset while keeping related resource files aligned.
+"""
 
 from __future__ import annotations
 
@@ -27,6 +31,7 @@ def read_ndjson(path: Path) -> list[dict[str, Any]]:
 def test_sample_cli_keeps_only_selected_patient_resources_and_preserves_filenames(
     tmp_path: Path,
 ) -> None:
+    # --- Section: Arrange a tiny multi-file FHIR export ---
     fhir_dir = tmp_path / "fhir"
     out_dir = tmp_path / "sampled"
     fhir_dir.mkdir()
@@ -54,6 +59,7 @@ def test_sample_cli_keeps_only_selected_patient_resources_and_preserves_filename
     )
     (fhir_dir / "parameters.json").write_text('{"ignored": true}\n', encoding="utf-8")
 
+    # --- Section: Run the sampler CLI ---
     runner = CliRunner()
     result = runner.invoke(
         sample_synthea.cli,
@@ -71,6 +77,7 @@ def test_sample_cli_keeps_only_selected_patient_resources_and_preserves_filename
 
     assert result.exit_code == 0
 
+    # --- Section: Assert only linked records were kept ---
     patient_records = read_ndjson(out_dir / "Patient.ndjson")
     encounter_records = read_ndjson(out_dir / "Encounter.ndjson")
     observation_records = read_ndjson(out_dir / "Observation.1778542031678.ndjson")
@@ -80,6 +87,7 @@ def test_sample_cli_keeps_only_selected_patient_resources_and_preserves_filename
     assert [record["id"] for record in observation_records] == ["observation-001"]
     assert not (out_dir / "parameters.json").exists()
 
+    # --- Section: Assert the summary output stays user-friendly ---
     assert "Patient.ndjson\t2\t1\t50.0%" in result.output
     assert "Encounter.ndjson\t2\t1\t50.0%" in result.output
     assert "Observation.1778542031678.ndjson\t2\t1\t50.0%" in result.output

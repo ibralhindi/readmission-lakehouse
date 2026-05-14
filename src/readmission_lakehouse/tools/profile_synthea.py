@@ -1,4 +1,10 @@
-"""Profile local Synthea FHIR NDJSON files and emit a Markdown summary."""
+"""Profile local Synthea FHIR NDJSON files and emit a Markdown summary.
+
+This module gives the project a fast, local way to inspect resource coverage
+before bronze and silver modeling decisions are locked in. It stays intentionally
+lightweight by sampling NDJSON exports directly rather than requiring Spark just
+to answer early shape and distribution questions.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +19,11 @@ import click
 import structlog
 from pydantic import BaseModel, ConfigDict, Field
 
+# ``structlog`` keeps logs as structured key/value events, which makes CLI runs easier to filter
+# in local development and later in orchestrated jobs.
 LOGGER = structlog.get_logger(__name__)
+# A shared frozen config keeps these report DTOs immutable once computed, which helps tests treat
+# them as snapshot-like outputs instead of mutable working objects.
 PROFILE_MODEL_CONFIG = ConfigDict(frozen=True)
 DEFAULT_SAMPLE_SIZE = 1_000
 BRONZED_RESOURCE_TYPES = frozenset(
@@ -106,6 +116,8 @@ class ProfileReport(BaseModel):
     sections: list[ResourceSection] = Field(default_factory=list)
 
 
+# Click turns this function into a small CLI without changing the Python call signature, so the
+# rest of the module can still test the pure helpers directly.
 @click.command()
 @click.option(
     "--fhir-dir",
@@ -122,9 +134,11 @@ class ProfileReport(BaseModel):
 def cli(fhir_dir: str, output_md: str) -> None:
     """Build a Markdown profile for local Synthea FHIR exports."""
 
+    # --- Section: Normalize CLI paths ---
     fhir_dir_path = Path(fhir_dir)
     output_md_path = Path(output_md)
 
+    # --- Section: Build and persist the report ---
     LOGGER.info(
         "profiling_synthea_fhir",
         fhir_dir=str(fhir_dir_path),
@@ -137,6 +151,7 @@ def cli(fhir_dir: str, output_md: str) -> None:
 def build_report(fhir_dir: Path) -> ProfileReport:
     """Build report sections for all NDJSON resources in a directory."""
 
+    # --- Section: Accumulate one section per resource file ---
     sections: list[ResourceSection] = []
     for input_path in iter_ndjson_files(fhir_dir):
         resource_type = derive_resource_type(input_path)
@@ -185,6 +200,7 @@ def count_records(input_path: Path) -> int:
 def load_sample_records(input_path: Path, sample_size: int) -> list[JsonObject]:
     """Load up to ``sample_size`` NDJSON objects from the top of a file."""
 
+    # --- Section: Read a bounded prefix of the file ---
     sample_records: list[JsonObject] = []
     with input_path.open("r", encoding="utf-8") as handle:
         for index, line in enumerate(handle):
@@ -199,14 +215,17 @@ def load_sample_records(input_path: Path, sample_size: int) -> list[JsonObject]:
 def infer_schema_fields(records: list[JsonObject]) -> list[SchemaFieldStat]:
     """Infer flat dotted-path field presence over a sample of JSON records."""
 
+    # --- Section: Short-circuit empty samples ---
     if not records:
         return []
 
+    # --- Section: Count non-null path occurrences ---
     presence_counter: Counter[str] = Counter()
     for record in records:
         for path in collect_non_null_paths(record):
             presence_counter[path] += 1
 
+    # --- Section: Convert counts to percentages ---
     total_records = len(records)
     return [
         SchemaFieldStat(path=path, presence_pct=round((count / total_records) * 100, 1))
@@ -217,10 +236,12 @@ def infer_schema_fields(records: list[JsonObject]) -> list[SchemaFieldStat]:
 def collect_non_null_paths(value: object, prefix: str = "") -> set[str]:
     """Collect dotted JSON paths whose values are populated in one record."""
 
+    # --- Section: Stop on absent values ---
     paths: set[str] = set()
     if value is None:
         return paths
 
+    # --- Section: Recurse through objects ---
     if isinstance(value, dict):
         for key, nested_value in value.items():
             current_path = f"{prefix}.{key}" if prefix else str(key)
@@ -230,9 +251,12 @@ def collect_non_null_paths(value: object, prefix: str = "") -> set[str]:
             paths.update(collect_non_null_paths(nested_value, current_path))
         return paths
 
+    # --- Section: Recurse through arrays ---
     if isinstance(value, list):
         if prefix:
             paths.add(prefix)
+        # ``[]`` marks "some element exists here" without pretending every list item has a stable
+        # numeric position, which would make cross-record schema summaries noisy.
         item_prefix = f"{prefix}[]" if prefix else "[]"
         for item in value:
             if item is None:
@@ -241,6 +265,7 @@ def collect_non_null_paths(value: object, prefix: str = "") -> set[str]:
             paths.update(collect_non_null_paths(item, item_prefix))
         return paths
 
+    # --- Section: Record scalar leaf values ---
     if prefix:
         paths.add(prefix)
     return paths
@@ -286,6 +311,8 @@ def parse_iso_datetime(value: object) -> datetime | None:
     if not isinstance(value, str) or not value:
         return None
 
+    # FHIR exports often use the ``Z`` suffix for UTC, but normalizing to an explicit offset keeps
+    # the parser behavior consistent across ISO-8601 variants.
     normalized_value = value[:-1] + "+00:00" if value.endswith("Z") else value
     try:
         parsed_value = datetime.fromisoformat(normalized_value)
@@ -308,9 +335,11 @@ def format_datetime(value: datetime | None) -> str | None:
 def summarize_datetimes(values: list[datetime]) -> tuple[str | None, str | None, str | None]:
     """Return min, max, and median strings for a datetime list."""
 
+    # --- Section: Short-circuit empty inputs ---
     if not values:
         return None, None, None
 
+    # --- Section: Choose a calendar midpoint ---
     sorted_values = sorted(values)
     middle_index = len(sorted_values) // 2
     if len(sorted_values) % 2 == 1:
@@ -318,6 +347,8 @@ def summarize_datetimes(values: list[datetime]) -> tuple[str | None, str | None,
     else:
         lower_value = sorted_values[middle_index - 1]
         upper_value = sorted_values[middle_index]
+        # ``statistics.median`` works on numeric timestamps, so converting to epoch seconds gives a
+        # true midpoint instead of picking one of the two central datetimes arbitrarily.
         median_timestamp = statistics.median([lower_value.timestamp(), upper_value.timestamp()])
         median_value = datetime.fromtimestamp(median_timestamp, tz=UTC)
 
@@ -363,6 +394,7 @@ def birth_year_to_decade_label(value: object) -> str | None:
 def build_encounter_stats(sample_records: list[JsonObject]) -> EncounterStats:
     """Build Encounter class, status, and period summary statistics."""
 
+    # --- Section: Accumulate distributions and period values ---
     class_counter: Counter[str] = Counter()
     status_counter: Counter[str] = Counter()
     period_starts: list[datetime] = []
@@ -391,6 +423,7 @@ def build_encounter_stats(sample_records: list[JsonObject]) -> EncounterStats:
         if period_end is not None:
             period_ends.append(period_end)
 
+    # --- Section: Collapse raw observations into summary fields ---
     period_start_min, period_start_max, period_start_median = summarize_datetimes(period_starts)
     period_end_min, period_end_max, period_end_median = summarize_datetimes(period_ends)
 
@@ -409,6 +442,7 @@ def build_encounter_stats(sample_records: list[JsonObject]) -> EncounterStats:
 def build_condition_code_stats(sample_records: list[JsonObject]) -> list[ConditionCodeStat]:
     """Build the top Condition code frequency table for one sample."""
 
+    # --- Section: Count codes while keeping one human-readable label ---
     code_counter: Counter[str] = Counter()
     display_by_code: dict[str, str | None] = {}
 
@@ -427,6 +461,7 @@ def build_condition_code_stats(sample_records: list[JsonObject]) -> list[Conditi
         if code not in display_by_code or display_by_code[code] is None:
             display_by_code[code] = display
 
+    # --- Section: Return the most common codes only ---
     return [
         ConditionCodeStat(code=code, display=display_by_code.get(code), frequency=frequency)
         for code, frequency in code_counter.most_common(10)
@@ -436,6 +471,7 @@ def build_condition_code_stats(sample_records: list[JsonObject]) -> list[Conditi
 def build_patient_stats(sample_records: list[JsonObject]) -> PatientStats:
     """Build gender, birth-decade, and deceased-percentage summary statistics."""
 
+    # --- Section: Accumulate patient-level signals ---
     gender_counter: Counter[str] = Counter()
     birth_year_counter: Counter[str] = Counter()
     deceased_count = 0
@@ -452,6 +488,7 @@ def build_patient_stats(sample_records: list[JsonObject]) -> PatientStats:
         if record.get("deceasedDateTime") is not None:
             deceased_count += 1
 
+    # --- Section: Convert counts to report-friendly metrics ---
     deceased_pct = None
     if sample_records:
         deceased_pct = round((deceased_count / len(sample_records)) * 100, 1)
@@ -466,10 +503,12 @@ def build_patient_stats(sample_records: list[JsonObject]) -> PatientStats:
 def write_markdown(report: ProfileReport, output_md: Path) -> None:
     """Render a profile report to Markdown on disk."""
 
+    # --- Section: Render the full document in memory ---
     lines: list[str] = ["# Synthea FHIR Profile", ""]
     for section in report.sections:
         lines.extend(render_section(section))
 
+    # --- Section: Persist to disk ---
     output_md.parent.mkdir(parents=True, exist_ok=True)
     output_md.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
@@ -477,6 +516,7 @@ def write_markdown(report: ProfileReport, output_md: Path) -> None:
 def render_section(section: ResourceSection) -> list[str]:
     """Render one resource section as Markdown lines."""
 
+    # --- Section: Build the shared section header ---
     lines = [
         f"## {section.resource_type}",
         f"**Bronze plan**: {section.bronze_plan}",
@@ -488,12 +528,14 @@ def render_section(section: ResourceSection) -> list[str]:
         "### Schema Presence",
     ]
 
+    # --- Section: Render schema coverage lines ---
     if section.schema_fields:
         for field_stat in section.schema_fields:
             lines.append(f"- `{field_stat.path}`: {field_stat.presence_pct:.1f}%")
     else:
         lines.append("- No sample records available.")
 
+    # --- Section: Append resource-specific detail blocks ---
     if section.resource_type == "Encounter":
         lines.extend(render_encounter_section(section.encounter_stats))
     if section.resource_type == "Condition":
@@ -508,11 +550,13 @@ def render_section(section: ResourceSection) -> list[str]:
 def render_encounter_section(stats: EncounterStats | None) -> list[str]:
     """Render Encounter-only Markdown lines."""
 
+    # --- Section: Render the subsection header ---
     lines = ["", "### Encounter Stats"]
     if stats is None:
         lines.append("- No Encounter stats available.")
         return lines
 
+    # --- Section: Render distributions and date summaries ---
     lines.append("- Class distribution:")
     for key, value in sorted(stats.class_distribution.items()):
         lines.append(f"  - {key}: {value}")
@@ -544,11 +588,13 @@ def render_condition_section(stats: list[ConditionCodeStat]) -> list[str]:
 def render_patient_section(stats: PatientStats | None) -> list[str]:
     """Render Patient-only Markdown lines."""
 
+    # --- Section: Render the subsection header ---
     lines = ["", "### Patient Stats"]
     if stats is None:
         lines.append("- No Patient stats available.")
         return lines
 
+    # --- Section: Render demographic summaries ---
     lines.append("- Gender distribution:")
     for key, value in sorted(stats.gender_distribution.items()):
         lines.append(f"  - {key}: {value}")

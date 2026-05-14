@@ -1,5 +1,10 @@
 # mypy: disable-error-code="untyped-decorator"
-"""Contract validation tests for the FHIR subset models."""
+"""Contract validation tests for the FHIR subset models.
+
+These tests check that the project's typed FHIR boundary accepts realistic
+minimal payloads and still preserves the alias behavior the pipeline relies on
+when validating raw Synthea JSON.
+"""
 
 from __future__ import annotations
 
@@ -14,6 +19,9 @@ from readmission_lakehouse.contracts.fhir import (
     FHIRReference,
     PatientContract,
 )
+
+# Pytest's decorators are dynamically typed, so this file opts out of that specific mypy warning
+# rather than weakening type checking for the rest of the test suite.
 
 
 @pytest.fixture
@@ -112,10 +120,14 @@ def test_registry_validates_minimal_resource_payloads(
     resource_type: str,
     fixture_name: str,
 ) -> None:
+    # ``request.getfixturevalue`` is a pytest idiom for parameterizing over fixture names when the
+    # fixture itself cannot be referenced directly in the parametrized list.
     payload = request.getfixturevalue(fixture_name)
     contract_type = RESOURCE_REGISTRY[resource_type]
 
     validated = contract_type.model_validate(payload)
+    # The registry returns different model classes, so ``cast`` sidesteps a static typing blind
+    # spot and lets the test assert against the shared ``id`` field.
     validated_id = cast(Any, validated).id
 
     assert validated_id == payload["id"]

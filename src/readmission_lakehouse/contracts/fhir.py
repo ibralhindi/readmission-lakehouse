@@ -1,4 +1,10 @@
-"""Pydantic contracts for the subset of FHIR resources used in the project."""
+"""Pydantic contracts for the subset of FHIR resources used in the project.
+
+These models give the silver layer a typed boundary over raw FHIR JSON while
+still accepting the wire-format field names exported by Synthea. The goal is to
+validate the resource shapes we actually depend on without re-implementing the
+entire FHIR specification.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +13,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# Pydantic reads ``model_config`` at class definition time, so one shared config keeps every
+# contract immutable and tolerant of extra raw FHIR fields without repeating the same settings.
 FHIR_MODEL_CONFIG = ConfigDict(extra="ignore", frozen=True, populate_by_name=True)
 
 
@@ -53,6 +61,8 @@ class PatientContract(BaseModel):
 
     id: str
     gender: Literal["male", "female", "other", "unknown"]
+    # The Python attribute stays snake_case, while the alias preserves the upstream FHIR field
+    # name so the contract can validate raw payloads directly.
     birth_date: date = Field(alias="birthDate")
     deceased_date_time: datetime | None = Field(default=None, alias="deceasedDateTime")
     address: list[dict[str, object]] = Field(default_factory=list)
@@ -67,7 +77,8 @@ class EncounterContract(BaseModel):
 
     id: str
     status: str
-    # FHIR: Encounter.class -> Coding
+    # ``class`` is a Python keyword, so the model uses ``class_`` internally and an alias to keep
+    # the public contract aligned with the incoming FHIR JSON.
     class_: Coding = Field(alias="class")
     type: list[CodeableConcept] = Field(default_factory=list)
     subject: FHIRReference
@@ -87,17 +98,15 @@ class ConditionContract(BaseModel):
     model_config = FHIR_MODEL_CONFIG
 
     id: str
-    # FHIR: Condition.clinicalStatus -> CodeableConcept | None
+    # These aliases let the model accept canonical FHIR camelCase names while the rest of the
+    # Python codebase can keep its usual snake_case style.
     clinical_status: CodeableConcept | None = Field(default=None, alias="clinicalStatus")
-    # FHIR: Condition.verificationStatus -> CodeableConcept | None
     verification_status: CodeableConcept | None = Field(default=None, alias="verificationStatus")
     category: list[CodeableConcept] = Field(default_factory=list)
     code: CodeableConcept
     subject: FHIRReference
     encounter: FHIRReference | None = None
-    # FHIR: Condition.onsetDateTime -> datetime | None
     onset_date_time: datetime | None = Field(default=None, alias="onsetDateTime")
-    # FHIR: Condition.recordedDate -> datetime | None
     recorded_date: datetime | None = Field(default=None, alias="recordedDate")
 
 
@@ -111,9 +120,9 @@ class ProcedureContract(BaseModel):
     code: CodeableConcept
     subject: FHIRReference
     encounter: FHIRReference | None = None
-    # FHIR: Procedure.performedDateTime -> datetime | None
+    # Procedure timing comes in under different FHIR field names depending on whether the source
+    # captured a single instant or a full interval, so both shapes are modeled explicitly.
     performed_date_time: datetime | None = Field(default=None, alias="performedDateTime")
-    # FHIR: Procedure.performedPeriod -> dict[str, datetime | None] | None
     performed_period: dict[str, datetime | None] | None = Field(
         default=None,
         alias="performedPeriod",
@@ -144,6 +153,8 @@ class PractitionerContract(BaseModel):
     telecom: list[dict[str, object]] = Field(default_factory=list)
 
 
+# The registry lets ingestion code choose a contract from the FHIR ``resourceType`` value without
+# hard-coding import branches throughout the pipeline.
 RESOURCE_REGISTRY: dict[str, type[BaseModel]] = {
     "Patient": PatientContract,
     "Encounter": EncounterContract,

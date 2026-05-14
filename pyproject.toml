@@ -64,11 +64,25 @@ select = [
 
 [tool.mypy]
 python_version = "3.12"
-strict = true
 ignore_missing_imports = true
 mypy_path = "src"
 explicit_package_bases = true
 packages = ["readmission_lakehouse"]
+
+# Bug-catching essentials (keep these)
+disallow_untyped_defs = true       # every function has type hints
+disallow_incomplete_defs = true    # no partially-typed signatures
+check_untyped_defs = true          # type-check inside untyped functions too
+warn_return_any = true             # flag implicit Any returns
+warn_unused_ignores = true         # remove stale # type: ignore
+no_implicit_optional = true        # `x: int = None` is rejected, must be `int | None`
+warn_redundant_casts = true        # flag dead cast()
+
+# Pedantic — disabled (these were in strict, fight 3rd-party libs)
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_any_generics = false
+no_implicit_reexport = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
