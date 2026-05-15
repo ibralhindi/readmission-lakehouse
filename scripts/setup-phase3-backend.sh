@@ -86,6 +86,36 @@ az storage container create \
   --output none
 echo "    OK"
 
+# --- Section: Grant current user data-plane access to state SA ---
+# Required for use_azuread_auth=true backend ops. Subscription Owner gives
+# management plane only; blob read/write needs the Storage Blob Data Contributor
+# role assigned separately on the data plane.
+echo "==> Granting Storage Blob Data Contributor on state SA to current user..."
+USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+SA_RESOURCE_ID=$(az storage account show \
+  --name "$BACKEND_SA" \
+  --resource-group "$BACKEND_RG" \
+  --query id -o tsv)
+
+# Idempotent: check if the assignment already exists before creating.
+EXISTING=$(az role assignment list \
+  --assignee "$USER_OBJECT_ID" \
+  --scope "$SA_RESOURCE_ID" \
+  --role "Storage Blob Data Contributor" \
+  --query "[].id" -o tsv)
+
+if [[ -n "$EXISTING" ]]; then
+  echo "    Role assignment already exists"
+else
+  az role assignment create \
+    --assignee "$USER_OBJECT_ID" \
+    --role "Storage Blob Data Contributor" \
+    --scope "$SA_RESOURCE_ID" \
+    --output none
+  echo "    OK — waiting 60s for AAD propagation..."
+  sleep 60
+fi
+
 # --- Section: Write partial backend configuration ---
 # Terraform supports splitting backend config: the resource (azurerm) goes in main.tf
 # (committed), and the per-environment values go in a separate file (gitignored).
