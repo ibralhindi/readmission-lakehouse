@@ -30,3 +30,19 @@ output "databricks_access_connector_principal_id" {
   value       = module.databricks.access_connector_principal_id
   description = "Object ID of the Databricks access connector's managed identity."
 }
+
+output "github_actions_client_id" {
+  value       = module.identity.application_id
+  description = "AZURE_CLIENT_ID for GitHub Actions OIDC."
+}
+
+output "github_actions_tenant_id" {
+  value       = var.tenant_id
+  description = "AZURE_TENANT_ID for GitHub Actions OIDC."
+}
+
+output "github_actions_subscription_id" {
+  value       = var.subscription_id
+  description = "AZURE_SUBSCRIPTION_ID for GitHub Actions OIDC."
+  sensitive   = true # Mark sensitive so it doesn't print in plan output unprompted.
+}
