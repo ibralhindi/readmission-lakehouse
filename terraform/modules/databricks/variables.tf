@@ -35,8 +35,8 @@ variable "sku" {
   default     = "premium"
 
   validation {
-    condition     = contains(["standard", "premium", "trial"], var.sku)
-    error_message = "sku must be one of: standard, premium, trial."
+    condition     = contains(["premium", "trial"], var.sku)
+    error_message = "sku must be one of: premium, trial."
   }
 }
 
