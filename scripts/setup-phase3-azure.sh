@@ -76,6 +76,12 @@ else
   echo "==> Generated new project suffix: $SUFFIX"
 fi
 
+# --- Section: Capture developer object ID ---
+# Stored so that role assignments for the developer are stable regardless of
+# who runs terraform (local user vs CI service principal).
+DEVELOPER_OID=$(az ad signed-in-user show --query id -o tsv)
+echo "==> Developer object ID: $DEVELOPER_OID"
+
 # --- Section: Write terraform.tfvars ---
 mkdir -p "$(dirname "$TFVARS_FILE")"
 cat > "$TFVARS_FILE" <<EOF
@@ -90,6 +96,7 @@ project_prefix  = "$PROJECT_PREFIX"
 project_suffix  = "$SUFFIX"
 environment     = "$ENVIRONMENT"
 location        = "$LOCATION"
+developer_object_id = "$DEVELOPER_OID"
 EOF
 
 echo ""

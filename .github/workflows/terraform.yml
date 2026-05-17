@@ -90,6 +90,7 @@ jobs:
           project_suffix  = "${{ secrets.PROJECT_SUFFIX }}"
           environment     = "dev"
           location        = "australiaeast"
+          developer_object_id = "${{ secrets.DEVELOPER_OBJECT_ID }}"
           EOF
 
       - name: Terraform format check
