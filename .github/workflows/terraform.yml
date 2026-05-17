@@ -71,6 +71,9 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Terraform format check
+        run: terraform fmt -check -recursive ../..
+
       # Reconstruct gitignored configs from secrets. Heredoc + the EOF trick keeps
       # secret values out of any shell echo or log.
       - name: Reconstruct backend.conf and terraform.tfvars
@@ -92,9 +95,6 @@ jobs:
           location        = "australiaeast"
           developer_object_id = "${{ secrets.DEVELOPER_OBJECT_ID }}"
           EOF
-
-      - name: Terraform format check
-        run: terraform fmt -check -recursive ../..
 
       - name: Terraform init
         run: terraform init -backend-config=backend.conf
