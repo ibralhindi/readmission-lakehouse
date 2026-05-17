@@ -33,16 +33,6 @@ resource "azurerm_storage_account" "this" {
   shared_access_key_enabled       = true
   public_network_access_enabled   = true
 
-  # --- Network rules ---
-  # Default action "Allow" = open to public internet (filtered only by firewall on
-  # client side, e.g. corporate proxies). Acceptable for a dev portfolio with
-  # synthetic data. For prod: switch to "Deny" with ip_rules for known CIs and
-  # virtual_network_subnet_ids for the Databricks data plane.
-  network_rules {
-    default_action = "Allow"
-    bypass         = ["AzureServices"] # Azure-internal services bypass the rule
-  }
-
   # --- Blob lifecycle / recovery ---
   # We DO NOT enable blob versioning because the bronze/silver/gold layers use
   # Delta Lake, which has its own versioning (time travel). Blob versioning on
