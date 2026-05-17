@@ -57,6 +57,16 @@ variable "environment" {
 
 variable "location" {
   type        = string
-  description = "Azure region."
+  description = "Azure region. (test CI)"
   default     = "australiaeast"
+}
+
+variable "developer_object_id" {
+  type        = string
+  description = "Azure AD object ID of the developer. Used for granting personal RBAC on KV and storage so it's stable across local-vs-CI runs."
+
+  validation {
+    condition     = can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.developer_object_id))
+    error_message = "developer_object_id must be a valid UUID."
+  }
 }

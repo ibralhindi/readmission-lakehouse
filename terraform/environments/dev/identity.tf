@@ -1,9 +1,13 @@
-# --- Read tfstate backend RG/SA names from the backend config (for RBAC scoping) ---
-# We need to grant the GH Actions SP data-plane access to the tfstate SA so CI
-# can read/write state. Looking up the SA dynamically rather than hardcoding.
-data "azurerm_storage_account" "tfstate" {
-  name                = "${var.project_prefix}tfstate${var.project_suffix}"
-  resource_group_name = "${var.project_prefix}-rg-tfstate"
+# Construct the tfstate storage account resource ID from variables we already have.
+# This avoids a `data "azurerm_storage_account"` lookup that would require granting
+# the CI SP management-plane Reader on the tfstate SA — we'd be reading data we
+# can deterministically compute, just to write it back into an attribute. The
+# constructed string is identical to what the data source would return.
+locals {
+  tfstate_storage_account_id = format(
+    "/subscriptions/%s/resourceGroups/%s-rg-tfstate/providers/Microsoft.Storage/storageAccounts/%stfstate%s",
+    var.subscription_id, var.project_prefix, var.project_prefix, var.project_suffix
+  )
 }
 
 # --- Identity module: AAD app + SP + 2 federated credentials ---
@@ -38,7 +42,7 @@ resource "azurerm_role_assignment" "ci_contributor_on_rg" {
 # - Why needed: state blob read/write is a data-plane operation. Subscription
 #   Contributor (which the SP doesn't even have) wouldn't include this
 resource "azurerm_role_assignment" "ci_storage_blob_contributor_on_tfstate" {
-  scope                = data.azurerm_storage_account.tfstate.id
+  scope                = local.tfstate_storage_account_id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = module.identity.service_principal_object_id
 }
@@ -49,5 +53,17 @@ resource "azurerm_role_assignment" "ci_storage_blob_contributor_on_tfstate" {
 resource "azurerm_role_assignment" "ci_storage_blob_contributor_on_project" {
   scope                = module.storage.id
   role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = module.identity.service_principal_object_id
+}
+
+# CI needs management-plane read on the tfstate SA so Terraform can refresh
+# state for the `ci_storage_blob_contributor_on_tfstate` role assignment above.
+# Storage Blob Data Contributor is data-plane only; reading a role assignment
+# is Microsoft.Authorization/roleAssignments/read, which lives in the management
+# plane. Reader provides */read at the scope — the narrowest builtin role that
+# satisfies this, far better than re-using Contributor.
+resource "azurerm_role_assignment" "ci_reader_on_tfstate" {
+  scope                = local.tfstate_storage_account_id
+  role_definition_name = "Reader"
   principal_id         = module.identity.service_principal_object_id
 }
