@@ -55,3 +55,15 @@ resource "azurerm_role_assignment" "ci_storage_blob_contributor_on_project" {
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = module.identity.service_principal_object_id
 }
+
+# CI needs management-plane read on the tfstate SA so Terraform can refresh
+# state for the `ci_storage_blob_contributor_on_tfstate` role assignment above.
+# Storage Blob Data Contributor is data-plane only; reading a role assignment
+# is Microsoft.Authorization/roleAssignments/read, which lives in the management
+# plane. Reader provides */read at the scope — the narrowest builtin role that
+# satisfies this, far better than re-using Contributor.
+resource "azurerm_role_assignment" "ci_reader_on_tfstate" {
+  scope                = local.tfstate_storage_account_id
+  role_definition_name = "Reader"
+  principal_id         = module.identity.service_principal_object_id
+}
