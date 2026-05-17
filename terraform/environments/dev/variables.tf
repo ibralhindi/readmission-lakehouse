@@ -57,6 +57,6 @@ variable "environment" {
 
 variable "location" {
   type        = string
-  description = "Azure region."
+  description = "Azure region. (test CI)"
   default     = "australiaeast"
 }
