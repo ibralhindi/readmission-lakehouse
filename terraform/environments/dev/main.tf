@@ -25,6 +25,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    databricks = {
+      source  = "databricks/databricks"
+      version = "~> 1.50"
+    }
   }
 
   # Partial backend config: real values come from backend.conf via
@@ -49,4 +53,16 @@ provider "azurerm" {
 # azuread provider: only needs tenant_id; auth is inherited from az login.
 provider "azuread" {
   tenant_id = var.tenant_id
+}
+
+# Databricks provider for workspace-level Unity Catalog resources (storage credential,
+# external locations, catalogs, schemas). Authenticates via the Azure CLI session
+# locally; in CI, picks up ARM_CLIENT_ID/TENANT/SUBSCRIPTION from OIDC env vars.
+#
+# Distinction worth knowing: there are two Databricks API layers — account-level
+# (for metastores, users, accounts admin) and workspace-level (everything else).
+# This provider config targets workspace-level only, which is all we need.
+provider "databricks" {
+  host                        = module.databricks.workspace_url
+  azure_workspace_resource_id = module.databricks.workspace_id
 }

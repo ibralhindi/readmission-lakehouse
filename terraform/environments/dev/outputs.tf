@@ -46,3 +46,18 @@ output "github_actions_subscription_id" {
   description = "AZURE_SUBSCRIPTION_ID for GitHub Actions OIDC."
   sensitive   = true # Mark sensitive so it doesn't print in plan output unprompted.
 }
+
+output "uc_catalog_name" {
+  value       = databricks_catalog.main.name
+  description = "Unity Catalog catalog name for the project."
+}
+
+output "uc_schemas" {
+  value       = [for k, _ in databricks_schema.this : "${databricks_catalog.main.name}.${k}"]
+  description = "Fully-qualified UC schema names (catalog.schema)."
+}
+
+output "uc_external_locations" {
+  value       = { for k, v in databricks_external_location.this : k => v.url }
+  description = "Map of container name to external location URL."
+}
