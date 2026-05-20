@@ -46,12 +46,7 @@ def add_ingestion_metadata(df: DataFrame, ingestion_run_id: str) -> DataFrame:
         hash depends only on source data — unchanged source rows produce
         identical hashes across runs, enabling MERGE-based deduplication later.
     """
-    # 1. Capture df.columns into a local variable BEFORE adding any metadata
-    #    columns. The hash function below uses this exact list, and you can't
-    #    compute it from `df.columns` later because by then metadata cols exist.
     original_columns = df.columns
-    #
-    # 2. Add the metadata columns.
     df_with_meta = df.withColumn("_load_ts", current_timestamp())
     df_with_meta = df_with_meta.withColumn("_source_file", input_file_name())
 
@@ -86,32 +81,23 @@ def ingest_resource(
     Returns:
         IngestResult dict for logging.
     """
-    # TODO(you):
-    # 1. If ingestion_run_id is None, generate one.
     if ingestion_run_id is None:
         ingestion_run_id = f"bronze_{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
-    #
-    # 2. Read NDJSON:
-    #    Spark handles .gz transparently — no need to mention compression.
+
+    # Spark handles .gz transparently — no need to mention compression.
     df_raw = spark.read.json(source_path)
-    #
-    # 3. Apply metadata:
     df_with_meta = add_ingestion_metadata(df_raw, ingestion_run_id)
-    #
-    # 4. Write Delta in overwrite mode (the snapshot-ingest pattern):
-    df_with_meta.write.format("delta").mode("overwrite").save(target_table)
-    #
-    #    overwrite semantics: replaces all data; if the table doesn't exist,
-    #    creates it. Idempotent: re-running the same source gives identical
-    #    target state. Schema-on-read: Spark infers the schema from NDJSON and
-    #    writes it into Delta's schema metadata on first write; subsequent
-    #    overwrites with incompatible schemas would fail (we'd add
-    #    .option("overwriteSchema", "true") if intentional).
-    #
-    # 5. Read back the row count for the return value:
-    row_count = df_with_meta.count()
-    #
-    # 6. Return an IngestResult dict.
+
+    # overwrite semantics: replaces all data; if the table doesn't exist,
+    # creates it. Idempotent: re-running the same source gives identical
+    # target state. Schema-on-read: Spark infers the schema from NDJSON and
+    # writes it into Delta's schema metadata on first write; subsequent
+    # overwrites with incompatible schemas would fail (we'd add
+    # .option("overwriteSchema", "true") if intentional).
+    df_with_meta.write.format("delta").mode("overwrite").saveAsTable(target_table)
+
+    row_count = spark.table(target_table).count()
+
     return IngestResult(
         target_table=target_table,
         source_path=source_path,
