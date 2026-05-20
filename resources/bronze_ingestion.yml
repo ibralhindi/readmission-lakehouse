@@ -32,18 +32,53 @@ resources:
             single_user_name: ${workspace.current_user.userName}
 
       tasks:
-        - task_key: ingest_practitioner
-          job_cluster_key: bronze_cluster
+        - task_key: ingest_all_bronze
+          # The outer task is the "loop controller". It doesn't need its own
+          # cluster — the inner task references job_cluster_key and that's what
+          # runs the actual work.
+          for_each_task:
+            # JSON-encoded array of values to iterate over. Each value becomes
+            # available inside the inner task as the magic string {{input}}.
+            # Order is deterministic and matches this list.
+            inputs: |
+              [
+                "Patient",
+                "Organization",
+                "Practitioner",
+                "Encounter",
+                "Condition",
+                "Procedure",
+                "Observation",
+                "MedicationRequest",
+                "Immunization",
+                "Claim",
+                "AllergyIntolerance",
+                "CarePlan",
+                "CareTeam",
+                "DocumentReference"
+              ]
 
-          python_wheel_task:
-            package_name: readmission_lakehouse
-            entry_point: rl-bronze-ingest
-            parameters:
-              - "--resource-name"
-              - "Practitioner"
+            # Serial execution. Two reasons:
+            # 1. Single-node cluster — parallel would just contend on one VM.
+            # 2. Easier log reading; one resource at a time in the run page.
+            concurrency: 1
 
-          libraries:
-            # Glob pattern matches whatever version the artifact build produced.
-            # The bundle uploads this to the workspace then `pip install`s it
-            # on the cluster before the task runs.
-            - whl: ../dist/*.whl
+            task:
+              task_key: ingest_one
+              # Inner task references the same job-level cluster. All 14
+              # iterations share one cluster instance — single boot, single
+              # teardown. This is the key cost optimisation here.
+              job_cluster_key: bronze_cluster
+
+              python_wheel_task:
+                package_name: readmission_lakehouse
+                entry_point: rl-bronze-ingest
+                parameters:
+                  - "--resource-name"
+                  - "{{input}}"
+
+              libraries:
+                # Glob pattern matches whatever version the artifact build produced.
+                # The bundle uploads this to the workspace then `pip install`s it
+                # on the cluster before the task runs.
+                - whl: ../dist/*.whl
