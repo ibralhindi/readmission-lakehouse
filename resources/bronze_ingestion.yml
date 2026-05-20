@@ -1,0 +1,49 @@
+# Bronze ingestion job.
+# One job, one task to start (Practitioner smoke test). We'll add tasks for
+# the other 13 resources in Step 4.7.
+
+resources:
+  jobs:
+    bronze_ingestion:
+      name: bronze-ingestion
+
+      # Job-level cluster shared by all tasks in this job. Single definition,
+      # reused via job_cluster_key in each task — same DRY logic as our
+      # for_each in Terraform.
+      job_clusters:
+        - job_cluster_key: bronze_cluster
+          new_cluster:
+            spark_version: 17.3.x-scala2.13
+            node_type_id: Standard_D4ds_v4
+
+            # Single node mode: no workers, driver does everything.
+            # Three settings together are what Databricks recognises as
+            # "single node" — there is no single boolean flag.
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+
+            # Required for Unity Catalog. ${workspace.current_user.userName}
+            # is a bundle variable resolved at deploy time.
+            data_security_mode: SINGLE_USER
+            single_user_name: ${workspace.current_user.userName}
+
+      tasks:
+        - task_key: ingest_practitioner
+          job_cluster_key: bronze_cluster
+
+          python_wheel_task:
+            package_name: readmission_lakehouse
+            entry_point: rl-bronze-ingest
+            parameters:
+              - "--resource-name"
+              - "Practitioner"
+
+          libraries:
+            # Glob pattern matches whatever version the artifact build produced.
+            # The bundle uploads this to the workspace then `pip install`s it
+            # on the cluster before the task runs.
+            - whl: ../dist/*.whl

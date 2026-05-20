@@ -1,0 +1,33 @@
+# Databricks Asset Bundle config for readmission-lakehouse.
+# Docs: https://docs.databricks.com/dev-tools/bundles/index.html
+#
+# A bundle is a directory containing this file plus referenced resources/*.yml.
+# `databricks bundle deploy` uploads the artifacts + registers the resources
+# (jobs, pipelines, models) in the target workspace.
+
+bundle:
+  name: readmission-lakehouse
+
+# Artifact builds — Databricks runs the build command then uploads the output.
+# Without this, you'd need to remember to `uv build` before every deploy.
+artifacts:
+  python_wheel:
+    type: whl
+    path: .
+    build: uv build --wheel
+
+# Include resource definitions split across files for readability.
+include:
+  - resources/*.yml
+
+# Targets define environment-specific overrides. We have one env (dev) for now;
+# a real team would add staging/prod targets here.
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405614307158980.0.azuredatabricks.net
+    # mode: development prepends "[dev <user>]" to job names and tags resources
+    # with the developer's identity. Prevents accidental collisions when
+    # multiple devs deploy to the same workspace.
