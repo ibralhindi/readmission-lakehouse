@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: bronze
+    catalog: rl_dev
+    schema: bronze
+    description: >
+      Bronze layer — raw FHIR resources ingested from Synthea via the Phase 4
+      asset-bundle job. Schema-on-read inferred from NDJSON. Each table has
+      _load_ts, _source_file, _row_hash, _ingestion_run_id metadata columns.
+
+    tables:
+      - name: patient
+        description: "FHIR Patient resources. ~11,400 rows."
+      - name: encounter
+        description: "FHIR Encounter resources. ~664,000 rows."
+      - name: condition
+      - name: procedure
+      - name: observation
+      - name: medication_request
+      - name: immunization
+      - name: claim
+      - name: allergy_intolerance
+      - name: care_plan
+      - name: care_team
+      - name: document_reference
+      - name: organization
+      - name: practitioner

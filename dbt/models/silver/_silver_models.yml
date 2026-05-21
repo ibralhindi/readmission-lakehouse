@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: patient
+    description: "One row per patient, flattened from FHIR Patient."
+    columns:
+      - name: patient_id
+        description: "Primary key. FHIR resource id."
+        data_tests:
+          - not_null
+          - unique
+      - name: gender
+        description: "Patient gender."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['male', 'female', 'other', 'unknown']
+                # FHIR spec allows these four; if we see others, something's wrong.
+      - name: birth_date
+        data_tests:
+          - not_null

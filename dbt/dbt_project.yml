@@ -1,0 +1,26 @@
+name: 'readmission_dbt'
+version: '0.1.0'
+config-version: 2
+
+profile: 'readmission_dbt'
+
+# Standard dbt directories
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Per-folder model config. Models inherit these unless overridden in-file.
+models:
+  readmission_dbt:
+    silver:
+      # All silver models land in rl_dev.silver, as managed Delta tables.
+      +materialized: table
+      +file_format: delta
+      +schema: silver

@@ -1,0 +1,74 @@
+[0m19:55:28.519237 [debug] [MainThread]: Got an exception trying to initialize tracking
+
+
+============================== 19:55:28.526462 | a647a0a8-09b4-4d58-bd1d-091aa9b17b8b ==============================
+[0m19:55:28.526462 [info ] [MainThread]: Running with dbt=1.11.8
+[0m19:55:28.527142 [debug] [MainThread]: running dbt with arguments {'log_path': 'logs', 'use_colors': 'True', 'version_check': 'True', 'quiet': 'False', 'warn_error': 'None', 'target_path': 'None', 'use_experimental_parser': 'False', 'write_json': 'True', 'send_anonymous_usage_stats': 'True', 'profiles_dir': '/home/ibrah/.dbt', 'introspect': 'True', 'debug': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'indirect_selection': 'eager', 'log_format': 'default', 'empty': 'None', 'partial_parse': 'True', 'printer_width': '80', 'log_cache_events': 'False', 'cache_selected_only': 'False', 'fail_fast': 'False', 'no_print': 'None', 'static_parser': 'True', 'invocation_command': 'dbt init readmission_dbt'}
+[0m19:55:28.556369 [debug] [MainThread]: Starter project path: /home/ibrah/projects/readmission-lakehouse/.venv/lib/python3.12/site-packages/dbt/include/starter_project
+[0m19:55:28.571842 [info ] [MainThread]:
+Your new dbt project "readmission_dbt" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m19:55:28.572419 [info ] [MainThread]: Setting up your profile.
+[0m19:55:54.873080 [debug] [MainThread]: Spark adapter: Setting pyhive.hive logging to ERROR
+[0m19:55:54.873656 [debug] [MainThread]: Spark adapter: Setting thrift.transport logging to ERROR
+[0m19:55:54.874012 [debug] [MainThread]: Spark adapter: Setting thrift.protocol logging to ERROR
+[0m16:06:36.113942 [debug] [MainThread]: Got an exception trying to initialize tracking
+
+
+============================== 16:06:36.122069 | 9ddc289b-7c0b-4245-a1f7-1b520f74d66b ==============================
+[0m16:06:36.122069 [info ] [MainThread]: Running with dbt=1.11.8
+[0m16:06:36.122908 [debug] [MainThread]: running dbt with arguments {'empty': 'None', 'no_print': 'None', 'invocation_command': 'dbt init readmission_dbt', 'static_parser': 'True', 'use_experimental_parser': 'False', 'log_format': 'default', 'warn_error': 'None', 'indirect_selection': 'eager', 'use_colors': 'True', 'introspect': 'True', 'target_path': 'None', 'write_json': 'True', 'partial_parse': 'True', 'log_path': 'logs', 'profiles_dir': '/home/ibrah/.dbt', 'send_anonymous_usage_stats': 'True', 'fail_fast': 'False', 'printer_width': '80', 'debug': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'cache_selected_only': 'False', 'version_check': 'True', 'quiet': 'False', 'log_cache_events': 'False'}
+[0m16:06:36.159375 [info ] [MainThread]: A project called readmission_dbt already exists here.
+[0m16:06:36.162770 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": true, "command_wall_clock_time": 0.12163301, "process_in_blocks": "56304", "process_kernel_time": 0.399562, "process_mem_max_rss": "103484", "process_out_blocks": "8", "process_user_time": 2.237551}
+[0m16:06:36.163872 [debug] [MainThread]: Command `dbt init` succeeded at 16:06:36.163609 after 0.12 seconds
+[0m16:06:36.164537 [debug] [MainThread]: Flushing usage events
+{"data":{"log_version":3,"version":"=2.0.0-preview.176"},"info":{"category":"","code":"A001","extra":{},"invocation_id":"019e4926-4410-7f62-9cea-869741803d1a","level":"info","msg":"Running with dbt-fusion=2.0.0-preview.176","name":"MainReportVersion","pid":63327,"thread":"tokio-rt-worker","ts":"2026-05-21T06:08:25.112446Z"}}
+{"data":{"args":{"debug":"false","invocation_command":"/home/ibrah/.local/bin/dbt license info --json --log-format json","log_format":"json","quiet":"false","write_json":"true"}},"info":{"category":"","code":"A002","extra":{},"invocation_id":"019e4926-4410-7f62-9cea-869741803d1a","level":"debug","msg":"running dbt-fusion with arguments {\"command\":\"license\",\"vars\":\"{}\",\"limit\":\"10\",\"debug\":false,\"log_format\":\"json\",\"quiet\":false,\"write_json\":true,\"write_catalog\":false}","name":"MainReportArgs","pid":63327,"thread":"tokio-rt-worker","ts":"2026-05-21T06:08:25.112513Z"}}
+{"data":{},"info":{"category":"","code":"","extra":{},"invocation_id":"019e4926-4410-7f62-9cea-869741803d1a","level":"debug","msg":"No active cloud project configured, skipping remote license","name":"Generic","pid":63327,"thread":"tokio-rt-worker","ts":"2026-05-21T06:08:25.113342Z"}}
+{"data":{"columns":[],"is_inline":true,"node_name":"license_info","output_format":"json","preview":"{\n  \"status\": \"not_found\",\n  \"licensing_enabled\": true\n}","unique_id":"license.info"},"info":{"category":"","code":"Q041","extra":{},"invocation_id":"019e4926-4410-7f62-9cea-869741803d1a","level":"info","msg":"{\n  \"status\": \"not_found\",\n  \"licensing_enabled\": true\n}","name":"ShowNode","pid":63327,"thread":"tokio-rt-worker","ts":"2026-05-21T06:08:25.113560Z"}}
+{"data":{"completed_at":"2026-05-21T06:08:26.783132Z","elapsed":1.6708815097808838,"success":true},"info":{"category":"","code":"Q039","extra":{},"invocation_id":"019e4926-4410-7f62-9cea-869741803d1a","level":"info","msg":"\n==================== Execution Summary =====================\nFinished 'license' successfully [1.7s]","name":"CommandCompleted","pid":63327,"thread":"tokio-rt-worker","ts":"2026-05-21T06:08:26.783317Z"}}
+[0m17:49:49.776742 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f7e316929f0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f7e31692ae0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f7e311a0680>]}
+
+
+============================== 17:49:49.783416 | 28f470c7-65b2-4a0e-a09e-8069ac4843b0 ==============================
+[0m17:49:49.783416 [info ] [MainThread]: Running with dbt=1.11.8
+[0m17:49:49.784146 [debug] [MainThread]: running dbt with arguments {'debug': 'False', 'cache_selected_only': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'invocation_command': 'dbt run --select patient --full-refresh', 'printer_width': '80', 'log_cache_events': 'False', 'use_colors': 'True', 'static_parser': 'True', 'empty': 'False', 'indirect_selection': 'eager', 'no_print': 'None', 'log_format': 'default', 'target_path': 'None', 'write_json': 'True', 'warn_error': 'None', 'introspect': 'True', 'partial_parse': 'True', 'quiet': 'False', 'profiles_dir': '/home/ibrah/.dbt', 'log_path': 'logs', 'version_check': 'True', 'send_anonymous_usage_stats': 'True', 'use_experimental_parser': 'False', 'fail_fast': 'False'}
+[0m17:49:49.784721 [error] [MainThread]: Encountered an error:
+Runtime Error
+  No dbt_project.yml found at expected path /home/ibrah/projects/readmission-lakehouse/dbt_project.yml
+  Verify that each entry within packages.yml (and their transitive dependencies) contains a file named dbt_project.yml
+
+[0m17:49:49.787248 [debug] [MainThread]: Resource report: {"command_name": "run", "command_success": false, "command_wall_clock_time": 0.095755026, "process_in_blocks": "45536", "process_kernel_time": 0.360409, "process_mem_max_rss": "103444", "process_out_blocks": "8", "process_user_time": 1.400447}
+[0m17:49:49.788002 [debug] [MainThread]: Command `dbt run` failed at 17:49:49.787794 after 0.10 seconds
+[0m17:49:49.788472 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f7e335d08f0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f7e31388260>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f7e30842900>]}
+[0m17:49:49.788903 [debug] [MainThread]: Flushing usage events
+[0m17:49:51.418555 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m17:50:03.818167 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f6071758560>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f6070c91ca0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f6070930290>]}
+
+
+============================== 17:50:03.822823 | 9b417ed3-3a06-4da3-9eb4-c1b0b34c7b22 ==============================
+[0m17:50:03.822823 [info ] [MainThread]: Running with dbt=1.11.8
+[0m17:50:03.823813 [debug] [MainThread]: running dbt with arguments {'log_path': 'logs', 'log_cache_events': 'False', 'profiles_dir': '/home/ibrah/.dbt', 'log_format': 'default', 'quiet': 'False', 'send_anonymous_usage_stats': 'True', 'empty': 'False', 'use_experimental_parser': 'False', 'indirect_selection': 'eager', 'write_json': 'True', 'fail_fast': 'False', 'cache_selected_only': 'False', 'target_path': 'None', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'no_print': 'None', 'use_colors': 'True', 'version_check': 'True', 'static_parser': 'True', 'printer_width': '80', 'invocation_command': 'dbt run --select patient --full-refresh', 'debug': 'False', 'warn_error': 'None', 'introspect': 'True', 'partial_parse': 'True'}
+[0m17:50:03.824626 [error] [MainThread]: Encountered an error:
+Runtime Error
+  No dbt_project.yml found at expected path /home/ibrah/projects/readmission-lakehouse/dbt_project.yml
+  Verify that each entry within packages.yml (and their transitive dependencies) contains a file named dbt_project.yml
+
+[0m17:50:03.825919 [debug] [MainThread]: Resource report: {"command_name": "run", "command_success": false, "command_wall_clock_time": 0.08433025, "process_in_blocks": "0", "process_kernel_time": 0.169643, "process_mem_max_rss": "103464", "process_out_blocks": "0", "process_user_time": 1.526788}
+[0m17:50:03.826627 [debug] [MainThread]: Command `dbt run` failed at 17:50:03.826487 after 0.09 seconds
+[0m17:50:03.827143 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f6070a08530>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f60713411c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f6071119a30>]}
+[0m17:50:03.827801 [debug] [MainThread]: Flushing usage events
+[0m17:50:05.386469 [debug] [MainThread]: An error was encountered while trying to flush usage events

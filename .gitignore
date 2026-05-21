@@ -60,3 +60,9 @@ terraform/environments/*/backend.conf
 # Asset bundle build artifacts
 dist/
 .databricks/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/.user.yml
