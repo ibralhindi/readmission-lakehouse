@@ -14,7 +14,7 @@
 
 WITH bronze_patient AS (
     SELECT *
-    FROM {{ source('bronze', 'patient') }}
+    FROM {{ source('silver_validated', 'patient_valid') }}
 ),
 
 flattened AS (

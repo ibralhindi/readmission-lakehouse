@@ -1,0 +1,41 @@
+# Silver validation job. Same pattern as bronze ingestion:
+# for_each_task iterates over priority resources; one shared job cluster.
+
+resources:
+  jobs:
+    silver_validation:
+      name: silver-validation
+
+      job_clusters:
+        - job_cluster_key: silver_cluster
+          new_cluster:
+            spark_version: 17.3.x-scala2.13
+            node_type_id: Standard_D4ds_v4
+            num_workers: 0
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+            data_security_mode: SINGLE_USER
+            single_user_name: ${workspace.current_user.userName}
+
+      tasks:
+        - task_key: validate_all_silver
+          for_each_task:
+            # Only Patient for Step 5.2 — we'll add the rest in Step 5.3 once
+            # the pattern is proven on the smallest resource (11k rows).
+            inputs: |
+              ["Patient"]
+            concurrency: 1
+            task:
+              task_key: validate_one
+              job_cluster_key: silver_cluster
+              python_wheel_task:
+                package_name: readmission_lakehouse
+                entry_point: rl-silver-validate
+                parameters:
+                  - "--resource-name"
+                  - "{{input}}"
+              libraries:
+                - whl: ../dist/*.whl

@@ -26,3 +26,11 @@ sources:
       - name: document_reference
       - name: organization
       - name: practitioner
+
+  - name: silver_validated
+    catalog: rl_dev
+    schema: silver
+    description: "PySpark-validated tables (output of silver-validation bundle job)."
+    tables:
+      - name: patient_valid
+      - name: patient_quarantine

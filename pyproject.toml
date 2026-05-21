@@ -16,6 +16,7 @@ dependencies = [
 profile-synthea = "readmission_lakehouse.tools.profile_synthea:cli"
 sample-synthea = "readmission_lakehouse.tools.sample_synthea:cli"
 rl-bronze-ingest = "readmission_lakehouse.bronze.cli:main"
+rl-silver-validate = "readmission_lakehouse.silver.cli:main"
 
 [dependency-groups]
 dev = [
