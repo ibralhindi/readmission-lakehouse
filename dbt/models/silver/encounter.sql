@@ -32,7 +32,7 @@ typed AS (
             WHEN 'HH'   THEN 'home health'
             WHEN 'VR'   THEN 'virtual'
             ELSE class.code
-        END AS encounter_class_display
+        END AS encounter_class_display,
         type[0].coding[0].code AS encounter_type_code,
         type[0].coding[0].display AS encounter_type_display,
         regexp_replace(subject.reference, '^(Patient/|urn:uuid:)', '') AS patient_id,
