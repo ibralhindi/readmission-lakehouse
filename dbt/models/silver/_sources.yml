@@ -34,3 +34,13 @@ sources:
     tables:
       - name: patient_valid
       - name: patient_quarantine
+      - name: encounter_valid
+      - name: encounter_quarantine
+      - name: condition_valid
+      - name: condition_quarantine
+      - name: procedure_valid
+      - name: procedure_quarantine
+      - name: organization_valid
+      - name: organization_quarantine
+      - name: practitioner_valid
+      - name: practitioner_quarantine

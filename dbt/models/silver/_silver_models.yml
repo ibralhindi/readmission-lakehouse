@@ -19,3 +19,42 @@ models:
       - name: birth_date
         data_tests:
           - not_null
+  - name: encounter
+    description: "One row per encounter. Central fact for readmission analytics."
+    columns:
+      - name: encounter_id
+        description: "Primary key. FHIR resource id."
+        data_tests:
+          - not_null
+          - unique
+      - name: patient_id
+        description: "FK to silver.patient.patient_id."
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('patient')
+              field: patient_id
+      - name: status
+        data_tests:
+          - accepted_values:
+              # FHIR Encounter status valueset
+              values: ['planned', 'arrived', 'triaged', 'in-progress', 'onleave', 'finished', 'cancelled', 'entered-in-error', 'unknown']
+      - name: encounter_class_code
+        data_tests:
+          - accepted_values:
+              # FHIR v3 ActCode subset Synthea uses
+              values: ['IMP', 'AMB', 'EMER', 'HH', 'OBSENC', 'SS', 'VR', 'PRENC']
+              # config severity=warn — if Synthea adds a code we don't expect,
+              # we want to know but not fail the build.
+              config:
+                severity: warn
+      - name: start_time
+        data_tests:
+          - not_null
+      - name: length_of_stay_hours
+        data_tests:
+          # Length-of-stay should be non-negative. Custom expression test.
+          - dbt_utils.expression_is_true:
+              expression: ">= 0 OR length_of_stay_hours IS NULL"
+              config:
+                severity: warn

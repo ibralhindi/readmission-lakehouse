@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # Pydantic reads ``model_config`` at class definition time, so one shared config keeps every
 # contract immutable and tolerant of extra raw FHIR fields without repeating the same settings.
@@ -90,6 +90,12 @@ class EncounterContract(BaseModel):
     # FHIR: Encounter.serviceProvider -> FHIRReference | None
     service_provider: FHIRReference | None = Field(default=None, alias="serviceProvider")
     participant: list[dict[str, object]] = Field(default_factory=list)
+
+    @field_validator("reason_code", mode="before")
+    @classmethod
+    def _none_to_empty(cls, v: object) -> object:
+        """FHIR 0..* fields arrive as null when absent; normalise to empty list."""
+        return [] if v is None else v
 
 
 class ConditionContract(BaseModel):

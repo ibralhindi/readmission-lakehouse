@@ -157,3 +157,23 @@ def test_encounter_contract_populates_alias_backed_class_field(
 
     assert encounter.class_.code == "AMB"
     assert encounter.subject.target_id == "patient-001"
+
+
+def test_encounter_contract_allows_null_reason_code() -> None:
+    """FHIR Encounter.reasonCode is 0..* — a routine visit with no reason
+    must validate. Regression test for the Phase 5 quarantine finding."""
+    minimal_encounter = {
+        "id": "encounter-001",
+        "status": "finished",
+        "class": {"code": "AMB", "display": "ambulatory"},
+        "type": [{"text": "Outpatient encounter"}],
+        "subject": {"reference": "Patient/patient-001"},
+        "period": {"start": "2024-01-15T09:30:00Z", "end": "2024-01-15T10:30:00Z"},
+        "reasonCode": None,
+        "hospitalization": {"dischargeDisposition": {"text": "Home"}},
+        "location": [{"location": {"display": "Clinic 1"}}],
+        "serviceProvider": {"reference": "Organization/org-001"},
+        "participant": [{"individual": {"reference": "Practitioner/prac-001"}}],
+    }
+    encounter = EncounterContract.model_validate(minimal_encounter)
+    assert encounter.reason_code == []

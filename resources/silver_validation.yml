@@ -26,7 +26,14 @@ resources:
             # Only Patient for Step 5.2 — we'll add the rest in Step 5.3 once
             # the pattern is proven on the smallest resource (11k rows).
             inputs: |
-              ["Patient"]
+              [
+                "Patient",
+                "Organization",
+                "Practitioner",
+                "Encounter",
+                "Condition",
+                "Procedure"
+              ]
             concurrency: 1
             task:
               task_key: validate_one
