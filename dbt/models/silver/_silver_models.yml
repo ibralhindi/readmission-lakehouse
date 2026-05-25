@@ -58,3 +58,24 @@ models:
               expression: ">= 0 OR length_of_stay_hours IS NULL"
               config:
                 severity: warn
+  - name: condition
+    columns:
+      - name: condition_id
+        data_tests: [not_null, unique]
+      - name: patient_id
+        data_tests:
+          - not_null
+          - relationships: {to: ref('patient'), field: patient_id}
+      - name: snomed_code
+        data_tests: [not_null]
+
+  - name: procedure
+    columns:
+      - name: procedure_id
+        data_tests: [not_null, unique]
+      - name: patient_id
+        data_tests:
+          - not_null
+          - relationships: {to: ref('patient'), field: patient_id}
+      - name: snomed_code
+        data_tests: [not_null]
