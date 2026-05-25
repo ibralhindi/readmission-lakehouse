@@ -42,3 +42,31 @@ models:
         data_tests: [not_null, unique]   # one row per code — both unique here
       - name: occurrence_count
         data_tests: [not_null]
+
+  - name: fact_encounter
+    description: "One row per encounter. Central star-schema fact."
+    columns:
+      - name: encounter_key
+        data_tests: [not_null, unique]
+      - name: encounter_id
+        data_tests: [not_null, unique]
+      - name: patient_key
+        description: "FK to dim_patient (as-of admission time)."
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_patient')
+              field: patient_key
+      - name: admission_date_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: organization_key
+        description: "FK to dim_organization (current version)."
+        data_tests:
+          - relationships:
+              to: ref('dim_organization')
+              field: organization_key
+              config: {severity: warn}

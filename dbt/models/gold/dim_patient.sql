@@ -26,7 +26,15 @@ SELECT
     address_city,
     address_state,
     address_postal_code,
-    dbt_valid_from AS valid_from,
+    -- As-of-join support: the earliest version of each patient is treated as
+    -- valid since 1900, not since snapshot-capture time. Without this, historical
+    -- encounters (all predating our 2026 snapshot) would match no version.
+    -- Subsequent versions keep their real change timestamps.
+    CASE
+        WHEN dbt_valid_from = MIN(dbt_valid_from) OVER (PARTITION BY patient_id)
+        THEN CAST('1900-01-01' AS TIMESTAMP)
+        ELSE dbt_valid_from
+    END AS valid_from,
     dbt_valid_to AS valid_to,
     (dbt_valid_to IS NULL) AS is_current,
     dbt_scd_id AS _snapshot_scd_id
