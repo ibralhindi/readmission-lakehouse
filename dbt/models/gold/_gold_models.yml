@@ -19,3 +19,26 @@ models:
       - name: is_current
         data_tests:
           - not_null
+
+  - name: dim_provider
+    columns:
+      - name: provider_key
+        data_tests: [not_null, unique]
+      - name: practitioner_id
+        data_tests: [not_null]
+
+  - name: dim_organization
+    columns:
+      - name: organization_key
+        data_tests: [not_null, unique]
+      - name: organization_id
+        data_tests: [not_null]
+
+  - name: dim_condition
+    columns:
+      - name: condition_key
+        data_tests: [not_null, unique]
+      - name: snomed_code
+        data_tests: [not_null, unique]   # one row per code — both unique here
+      - name: occurrence_count
+        data_tests: [not_null]
