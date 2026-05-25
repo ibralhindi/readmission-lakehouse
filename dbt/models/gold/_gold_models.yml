@@ -70,3 +70,19 @@ models:
               to: ref('dim_organization')
               field: organization_key
               config: {severity: warn}
+
+  - name: fact_readmission
+    description: "One row per inpatient index admission with 30-day readmission flag."
+    columns:
+      - name: readmission_key
+        data_tests: [not_null, unique]
+      - name: index_encounter_key
+        data_tests:
+          - not_null
+          - relationships: {to: ref('fact_encounter'), field: encounter_key}
+      - name: patient_key
+        data_tests:
+          - not_null
+          - relationships: {to: ref('dim_patient'), field: patient_key}
+      - name: was_readmitted_30d
+        data_tests: [not_null]
