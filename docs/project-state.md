@@ -1,188 +1,162 @@
-# Project State — End of Phase 4
+# Project State — End of Phase 5
 
-Last updated: 2026-05-19. Phase 4 complete. Phases 1–4 of 11 done.
+Last updated: 2026-05-25. Phase 5 complete. Phases 1–5 of 11 done.
 
 ## Project Context
 
 Hospital 30-day readmission risk lakehouse on Azure. Cross-industry parallel = churn.
-Owner: Ibrahim Al-Hindi (data scientist + CPA, transitioning to data engineer).
-Budget: $500. Timeline ceiling: 3 weeks. Repo: github.com/ibralhindi/readmission-lakehouse (public).
+Owner: Ibrahim Al-Hindi (data scientist + CPA → data engineer).
+Budget $500. Repo: github.com/ibralhindi/readmission-lakehouse (public).
 
 ## Tech Stack (locked)
 
-Python 3.12 + uv + ruff + mypy (pragmatic-strict). Synthea FHIR R4 Bulk Export NDJSON, 10k MA patients seed=42. Azure australiaeast. Terraform 1.15 + azurerm 4.x + azuread 3.x + databricks 1.x. Databricks Premium SKU. PySpark 3.5 + delta-spark 3.2 on Databricks Runtime 17.3 LTS. LangGraph for agentic AI (Phase 8). OpenAI API direct + Chroma local vector store. Power BI Desktop. dbt with snapshots for SCD2. Airflow 3.x local Docker (Phase 7).
+Python 3.12 + uv + ruff + mypy. Synthea FHIR R4 NDJSON, 10k MA patients seed=42.
+Azure australiaeast. Terraform 1.15 + azurerm 4.x + azuread 3.x + databricks 1.x.
+Databricks Premium, DBR 17.3 LTS. PySpark 3.5 + delta-spark 3.2. dbt-databricks 1.12
+(dbt-core 1.11). LangGraph (Phase 8) + OpenAI + Chroma. Power BI. Airflow 3.x (Phase 7).
 
 ## Working Agreements (unchanged)
 
-Tier scaffolding A/B/C. End-of-phase project-state snapshots + quizzes + decisions log. WHY-not-WHAT comments. AI collaboration disclosed honestly in README. See `.cursor/rules/*.mdc`.
+Tier scaffolding A/B/C. End-of-phase snapshots + quizzes + decisions log.
+WHY-not-WHAT comments. AI collaboration disclosed in README. See .cursor/rules/.
 
 ## Repo Structure
 readmission-lakehouse/
-├── .cursor/rules/                          # Cursor behaviour rules
-├── .github/workflows/terraform.yml         # OIDC CI/CD
-├── databricks.yml                          # Asset Bundle root config
+├── databricks.yml                          # Asset Bundle root
 ├── resources/
-│   └── bronze_ingestion.yml                # Bronze job (for_each_task, 14 resources)
-├── dist/                                   # Built wheels (gitignored)
-├── scripts/{setup-phase3-*, upload-synthea-to-adls}.sh
-├── terraform/environments/dev/
-│   ├── {main, variables, locals, outputs, rg, storage, keyvault, databricks, identity}.tf
-│   └── uc.tf                               # Unity Catalog: SC, EL, catalog, schemas
+│   ├── bronze_ingestion.yml                # for_each, 14 resources
+│   └── silver_validation.yml               # for_each, 6 contracted entities
+├── dbt/
+│   ├── dbt_project.yml                      # profile: readmission_dbt, silver materialized=table
+│   ├── packages.yml                         # dbt_utils
+│   ├── macros/
+│   │   ├── generate_schema_name.sql         # override: use +schema verbatim (no concat)
+│   │   ├── parse_fhir_timestamp.sql         # try_to_timestamp w/ XXX offset token
+│   │   └── extract_fhir_id.sql              # handles direct + logical reference formats
+│   ├── models/silver/
+│   │   ├── _sources.yml                     # bronze + silver_validated sources
+│   │   ├── _silver_models.yml               # tests + docs for 8 models
+│   │   ├── patient.sql  encounter.sql  condition.sql  procedure.sql
+│   │   ├── organization.sql  practitioner.sql
+│   │   └── observation.sql  medication_request.sql   # read from bronze (no contract)
+│   └── snapshots/
+│       ├── patient_snapshot.sql             # SCD2, check strategy
+│       ├── organization_snapshot.sql
+│       └── practitioner_snapshot.sql
 ├── src/readmission_lakehouse/
-│   ├── bronze/
-│   │   ├── cli.py                          # Console-script entry point (rl-bronze-ingest)
-│   │   ├── ingest.py                       # add_ingestion_metadata + ingest_resource
-│   │   └── resources.py                    # BronzeResource dataclass + 14 entries
-│   ├── contracts/fhir.py                   # Pydantic v2 FHIR contracts (6 resources)
-│   └── tools/{profile_synthea, sample_synthea}.py
-├── tests/
-│   ├── conftest.py                         # Session-scoped local Spark fixture
-│   └── unit/bronze/test_ingest.py          # 7 tests on add_ingestion_metadata
-├── data/synthea/output/                    # Local FHIR NDJSON (37 GB, gitignored)
-├── docs/{data-dictionary, decisions, quiz-log, project-state}.md
-└── pyproject.toml                          # [project.scripts] rl-bronze-ingest
+│   ├── bronze/{cli,ingest,resources}.py
+│   ├── silver/{cli,validate,resources}.py   # Pydantic validation + quarantine
+│   ├── contracts/fhir.py                    # 6 contracts; RESOURCE_REGISTRY dict
+│   └── tools/{profile_synthea,sample_synthea}.py
+├── tests/unit/{bronze,silver}/              # 34 dbt tests + pytest unit tests
+├── docs/{data-dictionary,decisions,quiz-log,project-state}.md
+└── pyproject.toml                           # scripts: rl-bronze-ingest, rl-silver-validate
+
+External (not in repo): `~/.dbt/profiles.yml` — OAuth U2M, catalog=rl_dev, schema=silver,
+http_path to rl-dev-interactive cluster.
 
 ## Live Azure Resources
 
-### Phase 3 carryover
+### Carryover (Phases 3–4)
+RG rl-rg-dev | Storage rlst3e33 (ADLS Gen2) | Key Vault rl-kv-3e33 |
+DBX workspace rl-dbx-3e33 (Premium) | Access Connector rl-ac-3e33 | CI app rl-gh-actions-dev (OIDC).
 
-| Resource | Name | Notes |
-|---|---|---|
-| RG project | `rl-rg-dev` | australiaeast |
-| RG tfstate | `rl-rg-tfstate` | Bootstrap-only |
-| RG dbx-managed | `rl-rg-dev-dbx-managed` | Azure-managed |
-| Storage (project) | `rlst3e33` | ADLS Gen2 + HNS, Standard_LRS |
-| Storage (tfstate) | `rltfstate3e33` | Blob versioning on |
-| Key Vault | `rl-kv-3e33` | RBAC auth |
-| DBX workspace | `rl-dbx-3e33` | Premium |
-| Access Connector | `rl-ac-3e33` | System-assigned MI |
-| AAD App (CI) | `rl-gh-actions-dev` | OIDC, no secret |
+### Unity Catalog
+Metastore metastore_azure_australiaeast (auto, empty-root). Catalog rl_dev (ISOLATED).
+Schemas bronze/silver/gold w/ per-schema managed_location. Storage credential
+rl-access-connector-dev. External locations rl-{bronze,silver,gold,raw}-dev.
 
-### Unity Catalog (Phase 4)
-
-| Resource | Name |
-|---|---|
-| Metastore | `metastore_azure_australiaeast` (auto-created, empty-root) |
-| Storage credential | `rl-access-connector-dev` (wraps rl-ac-3e33) |
-| External locations | `rl-{bronze,silver,gold,raw}-dev` |
-| Catalog | `rl_dev` (Terraform-managed, ISOLATED) |
-| Schemas | `rl_dev.{bronze,silver,gold}` (per-schema managed_location) |
-| Default catalog | `rl_dbx_3e33` (auto-created, unused but harmless) |
-
-Catalog default storage: `abfss://raw@.../_catalog_default` (rarely written; schemas override).
-
-### Databricks job (Phase 4)
-
-| Resource | Name | Notes |
-|---|---|---|
-| Job | `[dev ibralhindi@gmail.com] bronze-ingestion` | for_each_task, 14 iterations |
-| Job cluster | `bronze_cluster` (DBR 17.3 LTS, DS3_v2, single-node) | Ephemeral; reused across iterations within a run |
+### Databricks compute + jobs
+- Cluster rl-dev-interactive (DBR 17.3 LTS, DS3_v2, single-node) — dbt + ad-hoc.
+- Job bronze-ingestion (for_each 14 resources).
+- Job silver-validation (for_each 6 contracted entities).
 
 ## Data Inventory
 
-### Raw layer (`abfss://raw@rlst3e33.../synthea/`)
+### Bronze (rl_dev.bronze.*) — 14 tables, ~11.3M rows. FHIR struct + 4 metadata cols.
 
-14 gzipped NDJSON files, total ~1.13 GB compressed (~13× compression from 15 GB uncompressed). gzip is single-task on read (non-splittable); fine for single-node cluster, would migrate to bzip2 or Parquet for distributed scale.
+### Silver validated (rl_dev.silver.*_valid / *_quarantine)
+6 contracted entities each have _valid + _quarantine. After the reasonCode contract
+fix, all 6 are 100% valid (0 quarantine). The 246,890 encounters initially quarantined
+were a contract bug (reasonCode modeled as required; it's 0..* in FHIR), not bad data.
 
-### Bronze layer (`rl_dev.bronze.*`)
+### Silver conformed (rl_dev.silver.*) — 8 models, flat + typed
 
-All 14 tables loaded. Total ~11.3M rows. Schema: inferred FHIR struct + 4 metadata columns.
+| Table | Rows | Source | Notes |
+|---|---|---|---|
+| patient | 11,423 | patient_valid | race/ethnicity via URL-filtered extension |
+| encounter | 664,623 | encounter_valid | central fact; LOS computed |
+| condition | 412,692 | condition_valid | SNOMED comorbidities |
+| procedure | 1,848,211 | procedure_valid | SNOMED, performedPeriod |
+| organization | 1,141 | organization_valid | dimension |
+| practitioner | 1,141 | practitioner_valid | dimension |
+| observation | 5,862,543 | **bronze** (no contract) | polymorphic value[x]; components deferred |
+| medication_request | 573,225 | **bronze** (no contract) | medicationCodeableConcept (RxNorm) |
 
-| Table | Rows |
-|---|---|
-| patient | 11,423 |
-| organization | 1,141 |
-| practitioner | 1,141 |
-| encounter | 664,623 |
-| document_reference | 664,623 |
-| condition | 412,692 |
-| procedure | 1,848,211 |
-| observation | 5,862,543 |
-| medication_request | 573,225 |
-| immunization | 164,146 |
-| claim | 1,237,848 |
-| allergy_intolerance | 10,468 |
-| care_plan | 37,736 |
-| care_team | 37,736 |
+Encounter class distribution: AMB 621,188 (93%), EMER 24,467, IMP 12,689, HH 4,878, VR 1,401.
+**Readmission analytics scope = ~12,689 IMP encounters.** Hospitalization sub-resource
+(discharge disposition) populated on only 0.33% (2,183) of encounters.
 
-Metadata columns: `_load_ts` (timestamp), `_source_file` (input_file_name), `_row_hash` (sha2 of original cols as JSON, 64-char hex), `_ingestion_run_id` (e.g. `bronze_20260519T142055Z`).
+### SCD2 snapshots (rl_dev.silver.*_snapshot)
+patient_snapshot, organization_snapshot, practitioner_snapshot. check strategy.
+Demonstrated: a simulated patient address change produced contiguous validity windows.
+Gold dim_patient (Phase 6) will build on patient_snapshot for as-of-date demographics.
 
 ## Phase Status
 
-- [COMPLETED] Phase 1 — Scaffolding
-- [COMPLETED] Phase 2 — Synthea generation + Pydantic FHIR contracts
-- [COMPLETED] Phase 3 — Azure infra via Terraform + OIDC CI/CD
-- [COMPLETED] Phase 4 — Bronze ingestion (UC + asset bundle + 14 Delta tables)
-- [PENDING] Phase 5 — Silver layer (Pydantic-validated cleansed conformed)
-- [PENDING] Phase 6 — Gold layer (Kimball star: FactEncounter, FactReadmission, dims)
-- [PENDING] Phase 7 — Airflow orchestration (3.x local Docker)
-- [PENDING] Phase 8 — RAG / LangGraph Care Manager Agent + Streamlit demo
-- [PENDING] Phase 9 — Power BI dashboard
-- [PENDING] Phase 10 — CI/CD enhancements + dbt
-- [PENDING] Phase 11 — Final README + AI-collaboration framing
+- [COMPLETED] 1 Scaffolding | 2 Synthea + contracts | 3 Azure infra | 4 Bronze | 5 Silver
+- [PENDING] 6 Gold (Kimball star) | 7 Airflow | 8 RAG/LangGraph | 9 Power BI | 10 CI/dbt | 11 README
 
 ## Cost Tracker
 
-| Phase | Spend | Note |
-|---|---|---|
-| 1–3 | <$1 | Storage idle, no compute |
-| 4 | ~$2 | One cluster boot for full ingest + smoke tests; rest is storage |
-| **Total to date** | **~$3** | Of $500 budget |
+| Phase | Spend |
+|---|---|
+| 1–3 | <$1 |
+| 4 | ~$2 |
+| 5 | ~$6 (many dbt runs, 2× full validation incl. encounter reprocess, observation 5.8M build) |
+| **Total** | **~$9** of $500 |
 
-Storage ongoing: ~$0.30/month for 15 GB compressed + Delta footprint. Trivial.
+## Key Interview Talking Points (Phase 5 additions)
 
-## Key Interview Talking Points (Phase 4 additions)
+**Quarantine pattern (the headline story)**:
+- Validation quarantined 37% of encounters; investigation showed contract bug, not data bug
+- reasonCode is 0..* in FHIR; we modeled it required → 246,890 routine-visit encounters failed
+- Quarantine surfaced it without crashing the pipeline or silently dropping a third of encounters
+- "Validation is a feedback loop on your contracts as much as your data"
+- Fix: reasonCode optional via before-validator (null → empty list); added regression test
 
-**FHIR + Synthea**:
-- Bronze scope: 14 of 22 resources. Deferred 8 (EOB 9.9G redundant with Claim, etc.)
-- Observed cardinalities: care_plan = care_team (1:1), doc_ref = encounter (Synthea generates 1:1), org = practitioner (1:1, Synthea simplification — real ratio is many:1)
-- SNOMED CT not ICD-10 (AU Digital Health Agency standard)
+**Schema-on-read vs Pydantic contract**:
+- Spark-inferred schema = union of fields PRESENT in data, not full theoretical FHIR schema
+- Synthea omits class.display entirely → Spark never created the subfield → FIELD_NOT_FOUND
+- A contract can mark display optional and validate fine; doesn't materialize the column
+- When flattening schema-on-read data, reference only fields the inference found, or guard
 
-**Compression at the raw layer**:
-- gzip NDJSON in raw: ~13× compression vs uncompressed (15GB → 1.13GB)
-- Spark reads .gz transparently. Caveat: gzip non-splittable, 1 file = 1 task. Fine for single-node; distributed scale = bzip2 (splittable) or Parquet with snappy.
+**FHIR reference formats (direct vs logical)**:
+- Direct: "Patient/<id>". Logical: "Organization?identifier=<system>|<value>"
+- Synthea mixes them: direct for patient, logical for org/practitioner
+- Naive prefix-strip handles one, silently mangles the other
+- extract_fhir_id macro detects pipe → logical (split on |) vs prefix → direct (regexp strip)
 
-**Bronze metadata model**:
-- 4 columns: `_load_ts`, `_source_file`, `_row_hash`, `_ingestion_run_id`
-- `_row_hash` = SHA-256 of original-columns struct serialised to JSON (sha2(to_json(struct(*cols)), 256))
-- Computed BEFORE metadata cols added — same source row produces same hash across runs, enabling future MERGE-based incremental ingest without code change
-- Today: overwrite mode (snapshot ingest, idempotent); upgrade path: MERGE on FHIR `id` comparing `_row_hash`
+**Hybrid Pydantic + dbt architecture**:
+- Pydantic (Python) for row-level validation — expressive, structured errors, reuses contracts
+- dbt (SQL) for transformation — readable, testable, lineage, snapshots
+- Pure-dbt teams skip Pydantic (less expressive validation); pure-PySpark teams write SQL-as-Python (hard to review)
 
-**Unity Catalog architecture**:
-- Empty-root metastore + schema-level managed_location: avoids Premium-tier storage account requirement
-- Each schema's managed_location is a subpath of its layer's external_location
-- Catalog default storage at `raw/_catalog_default` — required by API even though our schemas override; underscore prefix signals "infra not data"
-- Why our own catalog (`rl_dev`) vs auto-created `rl_dbx_3e33`: control over storage location, project-named, separate from workspace-default
+**dbt macros for DRY**:
+- parse_fhir_timestamp (try_to_timestamp + XXX offset token for +10:00-style offsets)
+- extract_fhir_id (dual-format reference parsing)
+- generate_schema_name override: default concatenates target+custom = "silver_silver";
+  override returns custom verbatim → medallion schemas land correctly
 
-**Databricks development workflow**:
-- Python package + wheel + asset bundle beats notebooks for production pipelines: diffable in PRs, locally testable with pytest, type-checked with mypy
-- Notebooks reserved for exploration / ad-hoc validation
-- `python_wheel_task` with console_scripts entry point — proper Python packaging
+**SCD2 via dbt snapshots**:
+- check strategy (no reliable source timestamp; compare demographic cols)
+- Excluded birth_date/gender from check_cols (changing = data-quality issue, not slow change)
+- dbt manages dbt_valid_from/to, dbt_scd_id, dbt_updated_at; valid_to NULL = current
+- Contiguous validity windows (old.valid_to == new.valid_from) = correct as-of resolution
 
-**Asset bundle design**:
-- `databricks.yml` at root, `resources/*.yml` for jobs/pipelines
-- `artifacts.python_wheel` with `build: uv build --wheel` — bundle handles build+upload automatically
-- Job cluster, not interactive — auto-terminates after task completes, no manual cleanup discipline needed
-- `for_each_task` with `concurrency: 1` and shared `job_cluster_key` — 14 ingestions on one cluster boot (~$2 total vs ~$15 if each iteration booted its own cluster)
-- Targets (dev/staging/prod): `mode: development` prefixes job names with developer identity
+**Timestamp timezone artifact**:
+- Synthea used the generating machine's local TZ → all timestamps +10:00 (Melbourne AEST),
+  not patient-local (Massachusetts -05:00). Relative differences (readmission window) preserved.
 
-**`.save()` vs `.saveAsTable()` (real bug we caught)**:
-- `.save(path)` writes to a file path; `.saveAsTable(name)` writes AND registers in the metastore
-- In UC, only `.saveAsTable` routes data into the schema's managed_location and exposes the table through the three-level namespace
-- `.save()` would create orphan files invisible to UC
-
-**Performance gotcha (also caught)**:
-- `df.count()` after `df.write` recomputes the entire DAG (lazy)
-- `spark.table(target).count()` reads from Delta statistics (instant) AND validates write committed
-
-**MSA-as-guest-user UPN quirk** (hit twice in this project):
-- Personal Microsoft accounts as Azure AD guests get synthetic UPN: `<email-with-_>#EXT#@<tenant>.onmicrosoft.com`
-- azcopy needed `AZCOPY_AUTO_LOGIN_TYPE=AZCLI` to bypass its OAuth client
-- Databricks account console needed the UPN form directly
-- Both failures look like permission errors; root cause is sign-in flow incompatibility, not RBAC
-
-**CLI vs UI for one-time vs reproducible ops**:
-- Metastore creation: UI is correct (one-time, account-level, auth complexity not worth automating for portfolio scale)
-- Storage credential, external locations, catalog, schemas: Terraform databricks provider — reproducible, version-controlled, idempotent
-
-**`databricks fs ls abfss://`** doesn't work — CLI's fs commands are for DBFS and UC Volumes only. Use `az storage blob list` for direct cloud URL inspection.
+**Cost discipline**: silver validation re-run cost ~$0 extra by reusing the for_each shared
+cluster; observation (5.8M) materialised in one dbt run on the same cluster.
