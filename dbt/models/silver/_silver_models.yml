@@ -79,3 +79,36 @@ models:
           - relationships: {to: ref('patient'), field: patient_id}
       - name: snomed_code
         data_tests: [not_null]
+  - name: organization
+    columns:
+      - name: organization_id
+        data_tests: [not_null, unique]
+
+  - name: practitioner
+    columns:
+      - name: practitioner_id
+        data_tests: [not_null, unique]
+
+  - name: observation
+    columns:
+      - name: observation_id
+        data_tests: [not_null, unique]
+      - name: patient_id
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('patient')
+              field: patient_id
+              config: {severity: warn}   # unvalidated source — warn, don't fail
+
+  - name: medication_request
+    columns:
+      - name: medication_request_id
+        data_tests: [not_null, unique]
+      - name: patient_id
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('patient')
+              field: patient_id
+              config: {severity: warn}
