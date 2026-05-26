@@ -1,5 +1,7 @@
 {{ config(
-    materialized='table',
+    materialized='incremental',
+    unique_key='observation_id',
+    incremental_strategy='merge',
     file_format='delta'
 ) }}
 
@@ -42,3 +44,7 @@ flattened AS (
 )
 
 SELECT * FROM flattened
+{% if is_incremental() %}
+  -- Only process observations newer than what's already loaded.
+  WHERE effective_time > (SELECT MAX(effective_time) FROM {{ this }})
+{% endif %}

@@ -1,0 +1,69 @@
+// readmission-lakehouse — gold star schema
+// Generated for dbdiagram.io
+
+Table dim_date {
+  date_key int [pk]
+  full_date date
+  year int
+  quarter int
+  month int
+  day_of_week int
+  is_weekend boolean
+}
+
+Table dim_patient {
+  patient_key varchar [pk, note: 'surrogate (SCD2: hash of id + valid_from)']
+  patient_id varchar [note: 'natural key, repeats across versions']
+  gender varchar
+  birth_date date
+  race_display varchar
+  ethnicity_display varchar
+  marital_status_code varchar
+  valid_from timestamp
+  valid_to timestamp
+  is_current boolean
+}
+
+Table dim_provider {
+  provider_key varchar [pk]
+  practitioner_id varchar
+  family_name varchar
+  given_name varchar
+}
+
+Table dim_organization {
+  organization_key varchar [pk]
+  organization_id varchar
+  name varchar
+  type_display varchar
+}
+
+Table dim_condition {
+  condition_key varchar [pk]
+  snomed_code varchar
+  snomed_display varchar
+  occurrence_count int
+  note: 'reference dim — not yet FK-linked to a fact'
+}
+
+Table fact_encounter {
+  encounter_key varchar [pk]
+  encounter_id varchar
+  patient_key varchar [ref: > dim_patient.patient_key]
+  organization_key varchar [ref: > dim_organization.organization_key]
+  admission_date_key int [ref: > dim_date.date_key]
+  discharge_date_key int [ref: > dim_date.date_key]
+  encounter_class_code varchar
+  length_of_stay_hours float
+}
+
+Table fact_readmission {
+  readmission_key varchar [pk]
+  index_encounter_key varchar [ref: > fact_encounter.encounter_key]
+  patient_key varchar [ref: > dim_patient.patient_key]
+  index_admission_date_key int [ref: > dim_date.date_key]
+  days_to_readmission int
+  was_readmitted_30d boolean
+  is_likely_transfer boolean
+  was_readmitted_30d_excl_transfers boolean
+}

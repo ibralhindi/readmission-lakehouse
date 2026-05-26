@@ -70,10 +70,12 @@ Facts:
 
 ### Headline analytics
 
-**30-day readmission rate: 19.28%** (2,447 of 12,689 IMP index admissions).
-Day-level distribution is bimodal (spike 0-7 + 15-30, gap 8-14) — a Synthea
-module-scheduling artifact, not organic clinical deterioration. 0-1 day
-"readmissions" likely transfers (CMS would merge). Synthetic rate ≠ epidemiological truth.
+**30-day readmission rate: 13.64% (transfer-excluded) / 19.28% (raw).** The raw
+rate double-counts 716 same-day inter-facility transfers (CMS folds these into
+the index stay). Transfer-excluded is the defensible figure — close to the
+real-world ~15% benchmark. Day-level distribution is bimodal (day-0 transfer
+spike + a days-28-30 Synthea module-scheduling cluster), so the synthetic rate
+isn't quoted as epidemiological truth.
 
 ## Phase Status
 

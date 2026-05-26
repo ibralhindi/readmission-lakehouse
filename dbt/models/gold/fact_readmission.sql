@@ -38,7 +38,17 @@ flagged AS (
         CAST(DATEDIFF(next_admission_time, discharge_time) AS INT) AS days_to_readmission,
         CASE WHEN
             next_admission_time IS NOT NULL AND DATEDIFF(next_admission_time, discharge_time)
-            BETWEEN 0 AND 30 THEN TRUE ELSE FALSE END AS was_readmitted_30d
+            BETWEEN 0 AND 30 THEN TRUE ELSE FALSE END AS was_readmitted_30d,
+        -- Same-day "readmissions" are almost always inter-facility transfers,
+        -- which CMS folds into the index stay. Flag them and offer a
+        -- transfer-excluded rate (the more defensible headline: ~13.6% vs 19.28%).
+        CASE WHEN next_admission_time IS NOT NULL
+              AND DATEDIFF(next_admission_time, discharge_time) = 0
+             THEN TRUE ELSE FALSE END AS is_likely_transfer,
+
+        CASE WHEN next_admission_time IS NOT NULL
+              AND DATEDIFF(next_admission_time, discharge_time) BETWEEN 1 AND 30
+             THEN TRUE ELSE FALSE END AS was_readmitted_30d_excl_transfers
     FROM with_next
 )
 
@@ -54,7 +64,9 @@ SELECT
     -- Readmission measures
     f.next_encounter_id,
     f.days_to_readmission,
-    f.was_readmitted_30d
+    f.was_readmitted_30d,
+    f.is_likely_transfer,
+    f.was_readmitted_30d_excl_transfers
 FROM flagged f
 JOIN {{ ref('fact_encounter') }} fe
     ON f.encounter_id = fe.encounter_id
