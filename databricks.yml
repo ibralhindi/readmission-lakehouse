@@ -31,3 +31,12 @@ targets:
     # mode: development prepends "[dev <user>]" to job names and tags resources
     # with the developer's identity. Prevents accidental collisions when
     # multiple devs deploy to the same workspace.
+
+# Grant the Airflow service principal permission to trigger runs of every job
+# in this bundle. This lives here, not in the UI, because the jobs are
+# bundle-owned — the workspace permission editor is locked for DAB resources
+# ("Modify bundle sources and redeploy to edit this job"). Top-level CAN_RUN
+# maps to "Can Manage Run" for jobs, which is what DatabricksRunNowOperator needs.
+permissions:
+  - level: CAN_RUN
+    service_principal_name: e305daca-ddaa-4446-a3f4-5c89df23a17c
