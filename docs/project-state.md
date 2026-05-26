@@ -1,134 +1,129 @@
-# Project State — End of Phase 6
+# Project State — End of Phase 7
 
-Last updated: 2026-05-25. Phase 6 complete. Phases 1–6 of 11 done.
+Last updated: 2026-05-26. Phase 7 complete. Phases 1–7 of 11 done.
 
 ## Project Context
 
 Hospital 30-day readmission risk lakehouse on Azure. Cross-industry parallel = churn.
-Owner: Ibrahim Al-Hindi (data scientist + CPA → data engineer). Budget $500.
-Repo: github.com/ibralhindi/readmission-lakehouse (public).
+Owner: Ibrahim Al-Hindi (data scientist + CPA → data engineer).
+Budget $500. Repo: github.com/ibralhindi/readmission-lakehouse (public).
 
 ## Tech Stack (locked)
 
-Python 3.12 / uv / ruff / mypy. Synthea FHIR R4, 10k MA patients seed=42. Azure
-australiaeast. Terraform 1.15 + azurerm/azuread/databricks providers. Databricks
-Premium DBR 17.3 LTS. PySpark 3.5 + delta-spark 3.2. dbt-databricks 1.12 + dbt_utils.
-LangGraph (Phase 8) + OpenAI + Chroma. Power BI. Airflow 3.x (Phase 7).
+Python 3.12 + uv + ruff + mypy. Synthea FHIR R4 NDJSON, 10k MA patients seed=42.
+Azure australiaeast. Terraform 1.15 + azurerm 4.x + azuread 3.x + databricks 1.x.
+Databricks Premium, DBR 17.3 LTS. PySpark 3.5 + delta-spark 3.2. dbt-databricks 1.12
+(dbt-core 1.11) + dbt_utils. LangGraph (Phase 8) + OpenAI + Chroma. Power BI (Phase 9).
+Apache Airflow 3.2.1 (local Docker, CeleryExecutor).
 
 ## Working Agreements (unchanged)
 
-Tier scaffolding A/B/C. Snapshots + quizzes + decisions log per phase. WHY-not-WHAT
-comments. AI collaboration disclosed in README.
+Tier scaffolding A/B/C. End-of-phase snapshots + quizzes + decisions log.
+WHY-not-WHAT comments. AI collaboration disclosed in README. No-hallucination rule:
+verify project-specific facts against transcript or ask; flag inference vs confirmed.
 
-## Repo Structure (gold additions)
+## Repo Structure (Phase 7 additions)
+readmission-lakehouse/
+├── databricks.yml                          # + top-level permissions (SP CAN_RUN)
+├── resources/{bronze_ingestion,silver_validation}.yml
+├── dbt/{dbt_project.yml, packages.yml, macros/, models/{silver,gold}/, snapshots/}
+├── airflow/                                # Phase 7
+│   ├── Dockerfile                          # apache/airflow:3.2.1 + providers
+│   ├── requirements.txt                    # apache-airflow-providers-databricks, dbt-databricks
+│   ├── docker-compose.yaml                 # + mounts: ../dbt, ../src, ./dbt-profiles
+│   ├── .env                                # AIRFLOW_UID
+│   ├── dbt-profiles/profiles.yml           # SP M2M OAuth target 'airflow' -> SQL warehouse
+│   └── dags/readmission_pipeline.py        # trigger_bronze >> trigger_silver >> run_dbt_build
+├── src/readmission_lakehouse/{bronze,silver,contracts,tools}/
+├── tests/unit/{bronze,silver}/
+├── docs/{data-dictionary,decisions,quiz-log,project-state}.md
+└── pyproject.toml
 
-dbt/
-├── macros/{generate_schema_name, parse_fhir_timestamp, extract_fhir_id}.sql
-├── models/
-│   ├── silver/  (8 models: patient, encounter, condition, procedure,
-│   │             organization, practitioner, observation, medication_request)
-│   └── gold/
-│       ├── _gold_models.yml
-│       ├── dim_date.sql            # generated, date_spine, smart key YYYYMMDD
-│       ├── dim_patient.sql         # SCD2 from snapshot, valid_from floored to 1900
-│       ├── dim_provider.sql        # SCD2 from snapshot
-│       ├── dim_organization.sql    # SCD2 from snapshot
-│       ├── dim_condition.sql       # reference dim, distinct SNOMED (310 codes)
-│       ├── fact_encounter.sql      # central fact, as-of patient join + current org join
-│       └── fact_readmission.sql    # 30-day window calc (LEAD), one row per IMP admission
-└── snapshots/{patient,organization,practitioner}_snapshot.sql
+External (not in repo): ~/.dbt/profiles.yml (local U2M, target dev).
 
-## Live Azure Resources
+## Live Azure / Databricks Resources
 
-UC: metastore_azure_australiaeast (empty-root). Catalog rl_dev (ISOLATED), schemas
-bronze/silver/gold. Storage cred rl-access-connector-dev, external locations
-rl-{bronze,silver,gold,raw}-dev. Cluster rl-dev-interactive (DBR 17.3 LTS, DS3_v2,
-single-node). Jobs: bronze-ingestion, silver-validation.
+### Carryover (Phases 3–6)
+RG rl-rg-dev | Storage rlst3e33 (ADLS Gen2) | Key Vault rl-kv-3e33 |
+DBX workspace rl-dbx-3e33 (Premium) | Access Connector rl-ac-3e33 | CI app rl-gh-actions-dev (OIDC).
+UC: metastore_azure_australiaeast | catalog rl_dev (ISOLATED) | schemas bronze/silver/gold |
+storage cred rl-access-connector-dev | external locations rl-{bronze,silver,gold,raw}-dev.
 
-## Data Inventory
+### Compute
+- Cluster rl-dev-interactive (DBR 17.3 LTS, DS3_v2, single-node, DEDICATED/single-user =
+  ibralhindi) — interactive/ad-hoc dev ONLY.
+- SQL warehouse rl-dbt-warehouse (Serverless, 2X-Small, auto-stop 5min,
+  http_path /sql/1.0/warehouses/4cefe31ffc4390a9) — pipeline dbt compute. Multi-tenant.
+- Job clusters (ephemeral): bronze_cluster, silver_cluster (single-user = deploying user).
 
-### Bronze — 14 tables, ~11.3M rows (FHIR struct + metadata)
+### Jobs (asset-bundle)
+- [dev ibralhindi] bronze-ingestion (id 73579121572904) — for_each 14 resources.
+- [dev ibralhindi] silver-validation (id 122673186058194) — for_each 6 entities.
 
-### Silver — 8 conformed tables + 6 _valid/_quarantine pairs + 3 SCD2 snapshots
+### Phase 7 identity + orchestration
+- Service principal rl-airflow-dev (app id e305daca-ddaa-4446-a3f4-5c89df23a17c),
+  Databricks-managed, OAuth M2M, workspace-assigned. Grants: SELECT on bronze;
+  ALL PRIVILEGES on silver+gold; CAN USE on rl-dbt-warehouse; CAN_RUN on both jobs
+  (via databricks.yml top-level permissions); CAN RESTART on rl-dev-interactive (vestigial).
+- Airflow connection databricks_default (Databricks type, extra {"service_principal_oauth": true},
+  login = SP app id, password = SP OAuth secret).
+- Airflow Variable databricks_sp_client_secret (SP OAuth secret, for dbt env).
+- DAG readmission_pipeline: trigger_bronze >> trigger_silver >> run_dbt_build,
+  schedule @daily, catchup=False, kept PAUSED (manual trigger only).
 
-(all 100% valid after the reasonCode contract fix)
+## Data Inventory (unchanged from Phase 6)
 
-### Gold (rl_dev.gold.*) — star schema
-
-Dimensions:
-
-- dim_date (47,482 days, 1900–2030, smart key YYYYMMDD)
-- dim_patient (SCD2; 11,425 versions / 11,423 patients; valid_from floored to 1900 for as-of)
-- dim_provider (SCD2, 1,141)
-- dim_organization (SCD2, 1,141)
-- dim_condition (reference, 310 distinct SNOMED codes)
-
-Facts:
-
-- fact_encounter (664,623; FKs to patient [as-of], organization [current], date)
-- fact_readmission (12,689 IMP index admissions)
+Bronze: 14 tables ~11.3M rows. Silver: 8 conformed + 6 _valid/_quarantine pairs + 3 SCD2 snapshots.
+Gold star: dim_date, dim_patient (SCD2), dim_provider, dim_organization, dim_condition,
+fact_encounter (664,623), fact_readmission (12,689 IMP index admissions).
 
 ### Headline analytics
-
-**30-day readmission rate: 13.64% (transfer-excluded) / 19.28% (raw).** The raw
-rate double-counts 716 same-day inter-facility transfers (CMS folds these into
-the index stay). Transfer-excluded is the defensible figure — close to the
-real-world ~15% benchmark. Day-level distribution is bimodal (day-0 transfer
-spike + a days-28-30 Synthea module-scheduling cluster), so the synthetic rate
-isn't quoted as epidemiological truth.
+30-day readmission rate: **13.64% (transfer-excluded) / 19.28% (raw)**. Raw double-counts
+716 same-day transfers (CMS folds into index stay). Transfer-excluded ≈ real-world ~15%.
+Day distribution bimodal (day-0 transfers + days-28-30 Synthea scheduling cluster).
 
 ## Phase Status
 
-- [COMPLETED] 1 Scaffold | 2 Contracts | 3 Infra | 4 Bronze | 5 Silver | 6 Gold
-- [PENDING] 7 Airflow | 8 RAG/LangGraph | 9 Power BI | 10 CI/dbt | 11 README
+- [COMPLETED] 1 Scaffold | 2 Contracts | 3 Infra | 4 Bronze | 5 Silver | 6 Gold | 7 Airflow
+- [PENDING] 8 RAG/LangGraph agent | 9 Power BI | 10 CI/dbt | 11 README
 
 ## Cost Tracker
 
+| Phase | Spend |
+|---|---|
+| 1–6 | ~$13 |
+| 7 | ~$? (confirm — end-to-end run + a duplicate-run partial + dbt-auth retries) |
+| Total | ~$? of $500 |
 
-| Phase     | Spend                                                     |
-| --------- | --------------------------------------------------------- |
-| 1–3       | <$1                                                       |
-| 4         | ~$2                                                       |
-| 5         | ~$6                                                       |
-| 6         | ~$4 (multiple dbt runs, full build, observation rebuilds) |
-| **Total** | **~$13** of $500                                          |
+## Key Interview Talking Points (Phase 7 additions)
 
+**Why Airflow over Databricks Workflows**: Airflow orchestrates ACROSS systems (Databricks
+jobs + dbt + future APIs) with one schedule/retry/backfill/alert surface; Workflows is
+Databricks-only. Demonstrates the orchestration layer as a portable, vendor-agnostic skill.
 
-## Key Interview Talking Points (Phase 6 additions)
+**Headless auth — service principal OAuth M2M**: U2M browser flow can't work in a container,
+so a Databricks-managed SP with an OAuth client_id/secret. Machine identity, scoped, rotatable,
+not tied to a person. Airflow operators use it via the connection; dbt uses the same SP via
+profiles env vars (client_id not secret — it's an app id; secret from an Airflow Variable).
 
-**Kimball star schema**: facts (skinny, long, FKs + measures) surrounded by dims
-(wide, short, descriptive). Surrogate keys link them, decoupling warehouse from
-source IDs and enabling SCD2.
+**Single-user (Dedicated) cluster vs multi-tenant compute (the headline Phase-7 bug)**: dbt
+failed with "single-user check failed" — a Dedicated cluster runs all code as one bound
+identity, so the SP was rejected at attach even WITH Can Restart. Two orthogonal gates: cluster
+ACL (can you touch the compute) vs access mode (whose identity does it run as). Fix: point the
+pipeline's dbt at a serverless SQL warehouse (multi-tenant, no single-identity binding,
+seconds to start). Clean side effect: dedicated cluster for interactive dev, SQL warehouse for
+the pipeline.
 
-**Surrogate keys**: hash(natural_key [+ valid_from for SCD2]). One patient_id →
-many patient_keys (one per version), so patient_id can't be PK. dim_condition is
-the exception — natural key (snomed_code) IS unique because it's a deduplicated
-reference dim, not versioned.
+**DAB-owned resources lock the UI**: bundle-deployed job permissions can't be set in the UI
+("modify bundle sources and redeploy") — granted via top-level `permissions` in databricks.yml.
+Job names carry a `[dev <user>]` prefix from `mode: development`; referenced jobs by stable id.
 
-**SCD2 as-of join**: facts join to the dimension version valid AT EVENT TIME, not
-current. Window predicate: start_time >= valid_from AND start_time < valid_to (NULL
-valid_to = open). Verification = row-count conservation (fact == source, 0 dupes):
-overlap → fan-out/double-count, gap → dropped rows. Floored earliest valid_from to
-1900 so historical events (all predating our 2026 snapshot) resolve to the original version.
+**Airflow 3.x specifics**: services split (api-server, scheduler, dag-processor, triggerer,
+worker + postgres + redis); operators moved to apache-airflow-providers-standard
+(BashOperator), DAG from airflow.sdk. Custom image bakes providers in (ephemeral containers
+lose pip installs). Bind-mount the dbt project so the container runs repo code, not a copy.
 
-**FHIR identifier vs resource-id references**: references resolve by resource id
-(Patient/uuid) or by business identifier (Type?identifier=system|value). For identifier
-refs the value is namespace-specific: Synthea's org identifier = resource UUID (UUID
-join works), but practitioner identifier = NPI (≠ UUID, join needs NPI on both sides).
-A join that works on one reference type can silently fail on another. Provider FK deferred.
+**Scheduling footgun**: unpausing a @daily/catchup=False DAG immediately runs the latest
+interval; adding a manual trigger double-fired. One run = unpause-only OR `dags test`, not both.
 
-**30-day readmission window (LEAD)**: partition by patient, order by admission_time,
-LEAD() to get next admission, datediff to discharge, flag 0-30 days. Last admission
-per patient → NULL next → not readmitted. datediff truncates time (day granularity, correct).
-
-**SNOMED semantic tags**: (disorder)=disease, (finding)=clinical obs incl. social
-determinants, (situation)=admin. Top "condition" is admin ("medication review due").
-Social determinants (isolation, unemployment) are predictive of readmission — keep
-them, exclude admin codes, when building comorbidity features.
-
-**Critical-eye on synthetic analytics**: trust the pipeline, question the numbers.
-Bimodal readmission curve revealed Synthea's generative model. Don't quote synthetic
-rates as epidemiological fact.
-
-**dbt build**: runs models + snapshots + tests in DAG order — the canonical "reproducible
-from clone" verification.
+**append_env on BashOperator**: `env` alone wipes PATH so the dbt binary vanishes; append_env=True.

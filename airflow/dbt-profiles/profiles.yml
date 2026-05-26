@@ -9,7 +9,7 @@ readmission_dbt:
     airflow:
       type: databricks
       host: adb-7405614307158980.0.azuredatabricks.net
-      http_path: /sql/protocolv1/o/7405614307158980/0519-073619-xkma70l8
+      http_path: /sql/1.0/warehouses/4cefe31ffc4390a9
       catalog: rl_dev
       schema: silver
       threads: 4
