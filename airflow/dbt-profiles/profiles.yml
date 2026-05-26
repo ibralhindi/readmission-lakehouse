@@ -1,0 +1,18 @@
+# dbt profile used ONLY by the Airflow container (headless M2M auth).
+# Separate from ~/.dbt/profiles.yml (U2M) so local dev is unaffected.
+# Profile name MUST match dbt_project.yml's `profile: readmission_dbt`.
+# The secret is never written here — env_var() reads it at runtime from the
+# environment the DAG's BashOperator sets.
+readmission_dbt:
+  target: airflow
+  outputs:
+    airflow:
+      type: databricks
+      host: adb-7405614307158980.0.azuredatabricks.net
+      http_path: /sql/protocolv1/o/7405614307158980/0519-073619-xkma70l8
+      catalog: rl_dev
+      schema: silver
+      threads: 4
+      auth_type: oauth
+      client_id: "{{ env_var('DATABRICKS_CLIENT_ID') }}"
+      client_secret: "{{ env_var('DATABRICKS_CLIENT_SECRET') }}"
