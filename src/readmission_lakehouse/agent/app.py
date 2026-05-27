@@ -35,7 +35,9 @@ st.caption(
 patients = _cohort()
 labels = {
     f"{p['patient_id'][:8]}…  ·  {p['gender']}, {int(p['age'])}y  ·  "
-    f"{'⚠ readmitted' if p['ever_readmitted'] else 'not readmitted'}": p["patient_id"]
+    f"{'⚠ readmission history' if p['ever_readmitted'] else 'no prior readmission'}": p[
+        "patient_id"
+    ]
     for p in patients
 }
 choice = st.selectbox(f"Select a patient  ({len(patients)} in cohort)", list(labels))
@@ -53,11 +55,10 @@ if st.session_state.get("result_pid") == patient_id:
     profile = result["profile"]
 
     st.subheader("Patient profile")
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3 = st.columns(3)
     c1.metric("Age at admission", profile.get("age_at_admission", "—"))
     c2.metric("Length of stay (days)", profile.get("length_of_stay_days", "—"))
-    c3.metric("Readmitted ≤30d", "Yes" if profile.get("was_readmitted_30d") else "No")
-    c4.metric("Likely transfer", "Yes" if profile.get("is_likely_transfer") else "No")
+    c3.metric("Prior 30-day readmission", "Yes" if profile.get("ever_readmitted_30d") else "No")
     st.caption(
         f"{profile.get('gender', '?')} · {profile.get('race_display', '?')} · "
         f"{profile.get('ethnicity_display', '?')} · index admission "

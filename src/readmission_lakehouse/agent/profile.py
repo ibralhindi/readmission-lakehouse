@@ -49,7 +49,9 @@ def get_patient_profile(patient_id: str) -> dict:
             fr.days_to_readmission,
             fr.was_readmitted_30d,
             fr.is_likely_transfer,
-            fr.was_readmitted_30d_excl_transfers
+            fr.was_readmitted_30d_excl_transfers,
+            MAX(fr.was_readmitted_30d_excl_transfers)
+                OVER (PARTITION BY dp.patient_id) AS ever_readmitted_30d
         FROM rl_dev.gold.fact_readmission fr
         JOIN rl_dev.gold.fact_encounter fe ON fr.index_encounter_key = fe.encounter_key
         JOIN rl_dev.gold.dim_patient dp ON fr.patient_key = dp.patient_key
