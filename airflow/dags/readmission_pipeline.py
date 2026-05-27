@@ -41,8 +41,13 @@ SP_CLIENT_ID = "e305daca-ddaa-4446-a3f4-5c89df23a17c"
 
 default_args = {
     "owner": "ibrahim",
-    "retries": 1,
-    "retry_delay": timedelta(minutes=5),
+    "retries": 2,
+    "retry_delay": timedelta(minutes=2),
+    "retry_exponential_backoff": True,  # 2 -> 4 -> 8 min between retries
+    "max_retry_delay": timedelta(minutes=15),
+    "execution_timeout": timedelta(minutes=45),  # per-task ceiling; a hung task is
+    # killed -> on_kill cancels the
+    # Databricks run -> cluster stops billing
 }
 
 with DAG(
@@ -53,6 +58,8 @@ with DAG(
     schedule="@daily",  # realistic cadence; DAG stays PAUSED — trigger manually
     catchup=False,  # don't backfill a run for every day since start_date
     tags=["readmission", "databricks", "dbt", "medallion"],
+    dagrun_timeout=timedelta(hours=2),  # whole-run backstop (normal run ~42 min)
+    max_consecutive_failed_dag_runs=2,
 ) as dag:
     trigger_bronze = DatabricksRunNowOperator(
         task_id="trigger_bronze",
