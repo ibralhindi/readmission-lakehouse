@@ -1,10 +1,11 @@
-# Project State — End of Phase 7
+# Project State — End of Phase 8
 
-Last updated: 2026-05-26. Phase 7 complete. Phases 1–7 of 11 done.
+Last updated: 2026-05-27. Phase 8 complete. Phases 1–8 of 11 done.
 
 ## Project Context
 
-Hospital 30-day readmission risk lakehouse on Azure. Cross-industry parallel = churn.
+Hospital 30-day readmission risk lakehouse on Azure, with an agentic RAG
+care-manager assistant on top. Cross-industry parallel = churn.
 Owner: Ibrahim Al-Hindi (data scientist + CPA → data engineer).
 Budget $500. Repo: github.com/ibralhindi/readmission-lakehouse (public).
 
@@ -13,117 +14,201 @@ Budget $500. Repo: github.com/ibralhindi/readmission-lakehouse (public).
 Python 3.12 + uv + ruff + mypy. Synthea FHIR R4 NDJSON, 10k MA patients seed=42.
 Azure australiaeast. Terraform 1.15 + azurerm 4.x + azuread 3.x + databricks 1.x.
 Databricks Premium, DBR 17.3 LTS. PySpark 3.5 + delta-spark 3.2. dbt-databricks 1.12
-(dbt-core 1.11) + dbt_utils. LangGraph (Phase 8) + OpenAI + Chroma. Power BI (Phase 9).
-Apache Airflow 3.2.1 (local Docker, CeleryExecutor).
+(dbt-core 1.11) + dbt_utils. Apache Airflow 3.2.1 (local Docker, CeleryExecutor).
+Agentic RAG: LangGraph (tool-calling) + langchain-openai + langchain-chroma +
+Chroma (local) + databricks-sql-connector + streamlit + python-dotenv.
+OpenAI text-embedding-3-small (embed), gpt-4o-mini (chat). Power BI (Phase 9).
 
 ## Working Agreements (unchanged)
 
 Tier scaffolding A/B/C. End-of-phase snapshots + quizzes + decisions log.
-WHY-not-WHAT comments. AI collaboration disclosed in README. No-hallucination rule:
-verify project-specific facts against transcript or ask; flag inference vs confirmed.
+WHY-not-WHAT comments. AI collaboration disclosed in README. No-hallucination
+rule honored throughout Phase 8 (verified LangGraph tool-calling API and
+databricks-sql-connector M2M auth via search; pulled exact gold columns from
+the transcript rather than guess).
 
-## Repo Structure (Phase 7 additions)
+## Repo Structure (Phase 8 additions)
+
 readmission-lakehouse/
-├── databricks.yml                          # + top-level permissions (SP CAN_RUN)
+├── databricks.yml                              # Asset Bundle root
 ├── resources/{bronze_ingestion,silver_validation}.yml
 ├── dbt/{dbt_project.yml, packages.yml, macros/, models/{silver,gold}/, snapshots/}
-├── airflow/                                # Phase 7
-│   ├── Dockerfile                          # apache/airflow:3.2.1 + providers
-│   ├── requirements.txt                    # apache-airflow-providers-databricks, dbt-databricks
-│   ├── docker-compose.yaml                 # + mounts: ../dbt, ../src, ./dbt-profiles
-│   ├── .env                                # AIRFLOW_UID
-│   ├── dbt-profiles/profiles.yml           # SP M2M OAuth target 'airflow' -> SQL warehouse
-│   └── dags/readmission_pipeline.py        # trigger_bronze >> trigger_silver >> run_dbt_build
-├── src/readmission_lakehouse/{bronze,silver,contracts,tools}/
+├── airflow/                                    # Phase 7
+│   ├── Dockerfile, requirements.txt, docker-compose.yaml, .env, dbt-profiles/
+│   └── dags/readmission_pipeline.py            # retries+backoff, timeouts, auto-pause
+├── src/readmission_lakehouse/
+│   ├── bronze/, silver/, contracts/, tools/    # Phases 4–5
+│   └── agent/                                  # Phase 8
+│       ├── init.py
+│       ├── config.py          # loads .env; EMBED_MODEL, CHAT_MODEL, CHROMA_DIR
+│       ├── db.py              # warehouse access via SP OAuth M2M
+│       ├── guidelines.py      # 7 curated evidence-based interventions
+│       ├── corpus.py          # build patient_notes + guidelines Chroma collections
+│       ├── profile.py         # structured profile from gold + cohort list
+│       ├── graph.py           # tool-calling LangGraph agent
+│       └── app.py             # Streamlit care-manager UI
 ├── tests/unit/{bronze,silver}/
+├── scripts/{setup-phase3-.sh, upload-synthea-to-adls.sh, smoke_rag.py}
 ├── docs/{data-dictionary,decisions,quiz-log,project-state}.md
-└── pyproject.toml
+├── .env                       # gitignored: OPENAI_API_KEY + DATABRICKS_ (SP M2M)
+├── .chroma/                   # gitignored: local vector store
+└── pyproject.toml             # rag dep group added
 
-External (not in repo): ~/.dbt/profiles.yml (local U2M, target dev).
+## Live Azure / Databricks Resources (unchanged from Phase 7)
 
-## Live Azure / Databricks Resources
-
-### Carryover (Phases 3–6)
 RG rl-rg-dev | Storage rlst3e33 (ADLS Gen2) | Key Vault rl-kv-3e33 |
 DBX workspace rl-dbx-3e33 (Premium) | Access Connector rl-ac-3e33 | CI app rl-gh-actions-dev (OIDC).
-UC: metastore_azure_australiaeast | catalog rl_dev (ISOLATED) | schemas bronze/silver/gold |
-storage cred rl-access-connector-dev | external locations rl-{bronze,silver,gold,raw}-dev.
+UC: catalog rl_dev | schemas bronze/silver/gold | external locations rl-{bronze,silver,gold,raw}-dev.
+Cluster rl-dev-interactive (Dedicated, dev-only). SQL warehouse rl-dbt-warehouse
+(Serverless, 2X-Small) — used by Airflow's dbt task AND the agent's profile/db queries.
+Service principal rl-airflow-dev (OAuth M2M) — same machine identity for both
+the pipeline and the agent.
 
-### Compute
-- Cluster rl-dev-interactive (DBR 17.3 LTS, DS3_v2, single-node, DEDICATED/single-user =
-  ibralhindi) — interactive/ad-hoc dev ONLY.
-- SQL warehouse rl-dbt-warehouse (Serverless, 2X-Small, auto-stop 5min,
-  http_path /sql/1.0/warehouses/4cefe31ffc4390a9) — pipeline dbt compute. Multi-tenant.
-- Job clusters (ephemeral): bronze_cluster, silver_cluster (single-user = deploying user).
+## Phase 8 — Agentic RAG Care-Manager Assistant
 
-### Jobs (asset-bundle)
-- [dev ibralhindi] bronze-ingestion (id 73579121572904) — for_each 14 resources.
-- [dev ibralhindi] silver-validation (id 122673186058194) — for_each 6 entities.
+### Corpus (in .chroma/)
 
-### Phase 7 identity + orchestration
-- Service principal rl-airflow-dev (app id e305daca-ddaa-4446-a3f4-5c89df23a17c),
-  Databricks-managed, OAuth M2M, workspace-assigned. Grants: SELECT on bronze;
-  ALL PRIVILEGES on silver+gold; CAN USE on rl-dbt-warehouse; CAN_RUN on both jobs
-  (via databricks.yml top-level permissions); CAN RESTART on rl-dev-interactive (vestigial).
-- Airflow connection databricks_default (Databricks type, extra {"service_principal_oauth": true},
-  login = SP app id, password = SP OAuth secret).
-- Airflow Variable databricks_sp_client_secret (SP OAuth secret, for dbt env).
-- DAG readmission_pipeline: trigger_bronze >> trigger_silver >> run_dbt_build,
-  schedule @daily, catchup=False, kept PAUSED (manual trigger only).
+- patient_notes: 12,619 clinical notes for the 150-patient IMP cohort, base64-
+decoded from bronze.document_reference (one note = one doc, metadata
+patient_id + note_date). Embedded via text-embedding-3-small (1,536-dim).
+Note: Chroma local backend caps a single add() at 5,461 → embedded in
+batches of 5,000 via _add_in_batches.
+- guidelines: 7 curated original summaries of evidence-based readmission-
+reduction interventions (med rec, timely follow-up, teach-back, transitional
+care, post-discharge contact, SDOH, HF self-management).
 
-## Data Inventory (unchanged from Phase 6)
+### Cohort (locked for consistency)
 
-Bronze: 14 tables ~11.3M rows. Silver: 8 conformed + 6 _valid/_quarantine pairs + 3 SCD2 snapshots.
-Gold star: dim_date, dim_patient (SCD2), dim_provider, dim_organization, dim_condition,
-fact_encounter (664,623), fact_readmission (12,689 IMP index admissions).
+- 150 patients: DISTINCT from fact_readmission JOIN dim_patient ORDER BY
+patient_id LIMIT 150. The SAME query underlies both the corpus build and
+list_cohort_patients() (UI roster), guaranteeing the UI only offers
+patients we have notes for.
 
-### Headline analytics
-30-day readmission rate: **13.64% (transfer-excluded) / 19.28% (raw)**. Raw double-counts
-716 same-day transfers (CMS folds into index stay). Transfer-excluded ≈ real-world ~15%.
-Day distribution bimodal (day-0 transfers + days-28-30 Synthea scheduling cluster).
+### Agent (tool-calling LangGraph) — agentic, not a workflow
+
+- State: MessagesState (conversation history with add_messages reducer).
+- Tools (closed over patient_id per run — no UUID-passing through the model):
+  get_patient_profile_tool()  → structured profile from gold via warehouse
+  search_patient_notes(query) → Chroma similarity_search filtered by patient_id, k=8
+  search_guidelines(query)    → Chroma similarity_search over guidelines, k=4
+- Graph: START → agent → (tools_condition) → tools → agent → … → END.
+Model decides WHICH tools to call, WHAT queries to write, WHETHER to
+retrieve again, and WHEN to stop and compose the brief.
+- LLM: gpt-4o-mini, temperature 0.2.
+- System prompt: decision-support framing, cite guideline titles, ≤250 words,
+structured output (summary + 3-5 interventions + verify line).
+- recursion_limit=12 caps the loop (cost/safety guard).
+- run_agent() returns {plan, steps} — the brief + the tool-call trace parsed
+from messages (AIMessage.tool_calls paired with ToolMessage results).
+
+### UI (Streamlit)
+
+- Patient picker labelled "… · ,y · ⚠ readmission
+history | no prior readmission".
+- Generate button (button-gated + @st.cache_data + session_state — re-viewing
+the same patient is free; the brief persists across UI reruns).
+- Profile metrics (Age at admission, LOS days, Prior 30-day readmission —
+patient-level, transfer-excluded for consistency with the picker).
+- Brief + a "How the agent worked" expander showing the tool-call trace —
+the agentic behavior made visible to the viewer.
+
+### Auth
+
+- Service principal rl-airflow-dev (the Airflow SP) reused. databricks-sql-
+connector with credentials_provider + oauth_service_principal from
+databricks.sdk.core. OpenAI key + DATABRICKS_* live in gitignored .env.
+- Deferred to Phase 10: move all secrets to Key Vault (Airflow KV secrets
+backend, app pulls OPENAI_API_KEY from KV).
+
+### Bugs caught + fixed in Phase 8
+
+- Chroma 5,461 add-cap → _add_in_batches.
+- Picker/profile metric inconsistency — two correct queries telling different
+stories. Root cause: GRAIN mismatch (patient-level "ever" vs admission-level
+"latest") compounded by MEASURE mismatch (transfer-excluded vs raw).
+Aligned both on patient-level transfer-excluded "Prior 30-day readmission"
+— also the more clinically meaningful signal (prior readmission predicts
+the next).
+
+### Phase 8 narrative arc
+
+Built it first as a *workflow* — linear LangGraph pipeline (fetch_profile →
+retrieve_notes → retrieve_guidelines → generate_plan), each node hand-wired,
+LLM only generated. Then converted to a true *agent* — bound the retrieval
+functions as tools, let the model select+sequence them and write its own
+queries. Verified agentic behavior in the trace: the model's third tool call
+used terms (homelessness, IPV, social isolation) that came from the second
+call's results, demonstrating model-directed adaptive retrieval.
 
 ## Phase Status
 
-- [COMPLETED] 1 Scaffold | 2 Contracts | 3 Infra | 4 Bronze | 5 Silver | 6 Gold | 7 Airflow
-- [PENDING] 8 RAG/LangGraph agent | 9 Power BI | 10 CI/dbt | 11 README
+- [COMPLETED] 1 Scaffold | 2 Contracts | 3 Infra | 4 Bronze | 5 Silver
+        | 6 Gold | 7 Airflow | 8 Agentic RAG
+- [PENDING]   9 Power BI | 10 CI/dbt + Key Vault hardening | 11 README
 
 ## Cost Tracker
 
-| Phase | Spend |
-|---|---|
-| 1–6 | ~$13 |
-| 7 | ~$? (confirm — end-to-end run + a duplicate-run partial + dbt-auth retries) |
-| Total | ~$? of $500 |
 
-## Key Interview Talking Points (Phase 7 additions)
+| Phase                                          | Spend            |
+| ---------------------------------------------- | ---------------- |
+| 1–6                                            | ~$13             |
+| 7 (Airflow + end-to-end + warehouse + retries) | ~$8              |
+| 8 (OpenAI embeddings + agent runs + warehouse) | ~$1              |
+| **Total**                                      | **~$22 of $500** |
 
-**Why Airflow over Databricks Workflows**: Airflow orchestrates ACROSS systems (Databricks
-jobs + dbt + future APIs) with one schedule/retry/backfill/alert surface; Workflows is
-Databricks-only. Demonstrates the orchestration layer as a portable, vendor-agnostic skill.
 
-**Headless auth — service principal OAuth M2M**: U2M browser flow can't work in a container,
-so a Databricks-managed SP with an OAuth client_id/secret. Machine identity, scoped, rotatable,
-not tied to a person. Airflow operators use it via the connection; dbt uses the same SP via
-profiles env vars (client_id not secret — it's an app id; secret from an Airflow Variable).
+OpenAI: corpus embedding ~$0.20, agent runs <$0.001 each. Serverless warehouse
+usage: cents. The ~$22 still includes the silent ~$1/day standing workspace
+networking (NAT gateway / public IP in the Databricks managed RG) — DBUs are
+only part of the bill.
 
-**Single-user (Dedicated) cluster vs multi-tenant compute (the headline Phase-7 bug)**: dbt
-failed with "single-user check failed" — a Dedicated cluster runs all code as one bound
-identity, so the SP was rejected at attach even WITH Can Restart. Two orthogonal gates: cluster
-ACL (can you touch the compute) vs access mode (whose identity does it run as). Fix: point the
-pipeline's dbt at a serverless SQL warehouse (multi-tenant, no single-identity binding,
-seconds to start). Clean side effect: dedicated cluster for interactive dev, SQL warehouse for
-the pipeline.
+## Key Interview Talking Points (Phase 8 additions)
 
-**DAB-owned resources lock the UI**: bundle-deployed job permissions can't be set in the UI
-("modify bundle sources and redeploy") — granted via top-level `permissions` in databricks.yml.
-Job names carry a `[dev <user>]` prefix from `mode: development`; referenced jobs by stable id.
+**RAG mechanics**: an embedding model maps text to a ~1,500-dim vector
+positioned so similar meanings sit near each other. The query is embedded with
+the SAME model; the store returns nearest neighbors by cosine similarity.
+That's why "heart failure readmission" matches "congestive heart failure
+discharge" with zero shared keywords — it's meaning-space, not lexical search.
 
-**Airflow 3.x specifics**: services split (api-server, scheduler, dag-processor, triggerer,
-worker + postgres + redis); operators moved to apache-airflow-providers-standard
-(BashOperator), DAG from airflow.sdk. Custom image bakes providers in (ephemeral containers
-lose pip installs). Bind-mount the dbt project so the container runs repo code, not a copy.
+**Two collections, same mechanism, different inputs**: patient_notes uses a
+clinical probe query *filtered by patient_id* (narrow to one patient, then
+rank). guidelines uses the patient's top retrieved notes AS the query — the
+patient's clinical reality selects the relevant interventions.
 
-**Scheduling footgun**: unpausing a @daily/catchup=False DAG immediately runs the latest
-interval; adding a manual trigger double-fired. One run = unpause-only OR `dags test`, not both.
+**Workflow vs agent — the line crossed in 8.4b**: the linear pipeline was a
+workflow (developer-defined control flow). The tool-calling agent inverts it:
+the LLM is bound to tools and directs its own process — selecting tools,
+writing its own queries, looping, and deciding when done. Concrete proof from
+a real run: after the second tool call (notes) surfaced homelessness/IPV/
+isolation, the model's third tool call query was
+`search_guidelines(query='homelessness, intimate partner abuse, social isolation, …')` — content from a prior tool result shaping the next tool call.
 
-**append_env on BashOperator**: `env` alone wipes PATH so the dbt binary vanishes; append_env=True.
+**Why RAG closes the business loop**: the gold star schema gives the
+readmission RATE (13.64%, transfer-excluded). RAG over notes surfaces WHY
+this patient is at risk (social determinants, never in the structured
+warehouse) and WHAT to do (cited interventions). Structured tells the rate;
+unstructured tells the story.
+
+**Decision-support safety**: system prompt frames "suggest, don't decide";
+cites guideline titles; UI shows the agent's tool-call trace so a clinician
+sees what it drew on; README + caption disclose synthetic data + clinician-
+review intent. Deliberately not "autonomous clinical AI."
+
+**Chroma + embedding choices**: local Chroma + text-embedding-3-small is right
+for a portfolio (free, simple); production swaps to a managed vector store
+(Databricks Vector Search / Pinecone) for governance + multi-tenant scaling,
+embedding model unchanged unless evaluation justifies a domain-tuned model.
+
+**Metric grain consistency**: the picker/profile mismatch — two correct
+queries told two stories because grains (patient vs latest admission) and
+measures (transfer-excluded vs raw) differed. Lesson: every metric needs a
+defined grain and a single source measure, or your dashboard contradicts
+itself and erodes user trust.
+
+**Service-principal reuse**: same SP runs the Airflow pipeline and the local
+agent's warehouse queries (databricks-sql-connector + oauth_service_principal).
+One machine identity, two consumers — clean separation of human dev auth
+(your OAuth U2M) from automated auth.
+
+**Chroma batch cap**: local Chroma caps a single add() at ~5,461 docs (SQLite
+limit). Real-world quirk worth knowing; chunk writes under the cap.
