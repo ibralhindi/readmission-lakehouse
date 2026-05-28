@@ -60,6 +60,7 @@ SELECT
     f.encounter_id   AS index_encounter_id,  -- degenerate
     fe.admission_date_key  AS index_admission_date_key,
     fe.discharge_date_key  AS index_discharge_date_key,
+    fe.length_of_stay_hours AS index_length_of_stay_hours,
 
     -- Readmission measures
     f.next_encounter_id,
