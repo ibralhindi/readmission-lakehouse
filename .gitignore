@@ -69,3 +69,6 @@ dbt/.user.yml
 
 # local vector store
 .chroma/
+
+# Power BI
+*.pbix
