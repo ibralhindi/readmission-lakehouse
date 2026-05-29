@@ -1,7 +1,12 @@
 name: Terraform
 
-# Triggers: runs on push to main (for apply) and on PRs to main (for plan).
-# paths: filter limits runs to actual Terraform changes — saves CI minutes.
+# CI scope: fmt + validate (config correctness). We intentionally do NOT run a
+# live plan/apply here. A plan refreshes state and reads every resource —
+# including the Unity Catalog objects in uc.tf — which would require the CI
+# identity to hold Databricks metastore-admin privileges. We keep the CI
+# identity scoped to the Azure plane and run UC plan/apply locally as an
+# authorized admin. `validate` makes no provider API calls, so it needs no
+# cloud credentials at all.
 on:
   push:
     branches: [main]
@@ -14,43 +19,16 @@ on:
       - 'terraform/**'
       - '.github/workflows/terraform.yml'
 
-# Concurrency: prevent two terraform runs touching the same state simultaneously.
-# Without this, an apply on main could race with a plan on a PR and both grab
-# the state lock in unpredictable order. cancel-in-progress=false because cancelling
-# a running terraform leaves the state locked until manual unlock.
-concurrency:
-  group: terraform-dev
-  cancel-in-progress: false
-
-# Three permissions are required:
-#   - id-token -> CRITICAL for OIDC. Without this, the federated
-#                            credential trust silently fails to mint a token.
-#                            This is THE most common OIDC misconfiguration.
-#   - contents -> just needs to read the repo to checkout.
-#   - pull-requests -> needed for the "post plan as PR comment" step.
 permissions:
-  id-token: write
   contents: read
-  pull-requests: write
 
 jobs:
-  terraform:
-    name: Terraform plan/apply
+  validate:
+    name: Terraform fmt + validate
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: terraform/environments/dev
-
-    # OIDC environment variables for the azurerm provider
-    # The azurerm provider reads these to authenticate. Without ARM_USE_OIDC,
-    # it would look for a client secret (which we don't have, by design).
-    env:
-      ARM_USE_OIDC: true
-      ARM_USE_AZUREAD: true
-      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,80 +37,16 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.15.2"
-          terraform_wrapper: false   # false = let our shell see raw terraform output
 
-      # azure/login uses the same OIDC token that the azurerm provider will use.
-      # Running this step early also validates the federated credential trust
-      # works — if the subject claim doesn't match, this is where you'll see it fail.
-      - name: Azure login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Terraform format check
+      - name: Format check (all of terraform/)
         run: terraform fmt -check -recursive ../..
 
-      # Reconstruct gitignored configs from secrets. Heredoc + the EOF trick keeps
-      # secret values out of any shell echo or log.
-      - name: Reconstruct backend.conf and terraform.tfvars
-        run: |
-          cat > backend.conf <<EOF
-          resource_group_name  = "rl-rg-tfstate"
-          storage_account_name = "rltfstate${{ secrets.PROJECT_SUFFIX }}"
-          container_name       = "tfstate"
-          key                  = "dev.tfstate"
-          use_azuread_auth     = true
-          EOF
+      # -backend=false installs providers + modules to validate config against
+      # their schemas, without configuring remote state. No Azure/Databricks
+      # auth and no state read — so the Databricks provider is never asked to
+      # authenticate to the workspace, which is exactly what was failing.
+      - name: Init (no backend)
+        run: terraform init -backend=false
 
-          cat > terraform.tfvars <<EOF
-          subscription_id = "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
-          project_prefix  = "rl"
-          project_suffix  = "${{ secrets.PROJECT_SUFFIX }}"
-          environment     = "dev"
-          location        = "australiaeast"
-          developer_object_id = "${{ secrets.DEVELOPER_OBJECT_ID }}"
-          EOF
-
-      - name: Terraform init
-        run: terraform init -backend-config=backend.conf
-
-      - name: Terraform validate
+      - name: Validate
         run: terraform validate
-
-      # Plan always runs. Output captured for the PR comment.
-      - name: Terraform plan
-        id: plan
-        run: terraform plan -var-file=terraform.tfvars -no-color -out=tfplan
-
-      # Post the plan output to the PR for human review.
-      - name: Comment plan on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const output = `### Terraform Plan
-            <details><summary>Show plan output</summary>
-
-            \`\`\`hcl
-            ${{ steps.plan.outputs.stdout }}
-            \`\`\`
-
-            </details>
-
-            *Plan by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
-
-      # Apply only on push to main, never on PRs. The saved tfplan ensures we
-      # apply EXACTLY what was planned — no drift between plan and apply.
-      - name: Terraform apply
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve tfplan
