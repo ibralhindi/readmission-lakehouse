@@ -41,6 +41,8 @@ rag = [
     "databricks-sql-connector>=4.1.5",
     "streamlit>=1.57.0",
     "python-dotenv>=1.2.2",
+    "azure-identity>=1.25.3",
+    "azure-keyvault-secrets>=4.11.0",
 ]
 
 [build-system]

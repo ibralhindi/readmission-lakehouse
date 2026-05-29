@@ -73,6 +73,8 @@ def _store(collection: str) -> Chroma:
 
 
 def _llm() -> ChatOpenAI:
+    require_openai_key()  # exports OPENAI_API_KEY (from Key Vault) before the client reads it
+    # Low temperature: clinical content, consistency over flair.
     return ChatOpenAI(model=CHAT_MODEL, temperature=0.2)
 
 
