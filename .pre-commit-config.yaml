@@ -22,6 +22,9 @@ repos:
         additional_dependencies:
           - pydantic>=2,<3
           - types-click
+          - azure-identity>=1.25.3
+          - azure-keyvault-secrets>=4.11.0
+          - databricks-sql-connector>=4.1.5
         args: [--config-file=pyproject.toml]
 
   - repo: https://github.com/antonbabenko/pre-commit-terraform

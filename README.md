@@ -37,7 +37,7 @@
 <!-- One-line placeholder: Power BI / reporting entry points. -->
 
 ## CI/CD
-
+![CI](https://github.com/ibralhindi/readmission-lakehouse/actions/workflows/ci.yml/badge.svg)
 <!-- One-line placeholder: GitHub Actions and deployment stages. -->
 
 ## Cost
