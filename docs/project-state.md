@@ -1,99 +1,112 @@
-# Project State — End of Phase 9
+# Project State — End of Phase 10
 
-Last updated: 2026-05-28. Phase 9 complete. Phases 1–9 of 11 done.
+Last updated: 2026-05-28. Phase 10 complete. Phases 1–10 of 11 done.
 
 ## Project Context
 Hospital 30-day readmission lakehouse on Azure + agentic RAG care-manager
-assistant + Power BI analyst dashboard. Cross-industry parallel = churn.
-Owner: Ibrahim Al-Hindi (data scientist + CPA → data engineer).
-Budget $500 (~$22 spent). Repo: github.com/ibralhindi/readmission-lakehouse (public).
+assistant + Power BI dashboard, with CI/CD and vaulted secrets.
+Cross-industry parallel = churn. Owner: Ibrahim Al-Hindi (data scientist +
+CPA → data engineer). Budget $500 (~$22 spent).
+Repo: github.com/ibralhindi/readmission-lakehouse (public).
 
 ## Tech Stack (locked)
-Python 3.12 + uv + ruff + mypy. Synthea FHIR R4 NDJSON, 10k MA patients seed=42.
-Azure australiaeast. Terraform 1.15 + azurerm 4.x + azuread 3.x + databricks 1.x.
-Databricks Premium, DBR 17.3 LTS. PySpark 3.5 + delta-spark 3.2. dbt-databricks 1.12.
-Apache Airflow 3.2.1 (local Docker, CeleryExecutor). Agentic RAG: LangGraph +
-langchain-openai + langchain-chroma + Chroma + databricks-sql-connector + streamlit.
-OpenAI text-embedding-3-small + gpt-4o-mini. Power BI Desktop (Windows, Import mode).
+Python 3.12 + uv + ruff + mypy + pre-commit. Synthea FHIR R4, 10k MA patients
+seed=42. Azure australiaeast. Terraform 1.15 + azurerm 4.x + databricks 1.x.
+Databricks Premium DBR 17.3. PySpark 3.5 + delta-spark 3.2. dbt-databricks 1.12.
+Airflow 3.2.1 (local Docker). Agentic RAG: LangGraph + langchain-openai +
+langchain-chroma + Chroma + databricks-sql-connector + streamlit. OpenAI
+text-embedding-3-small + gpt-4o-mini. Power BI Desktop (Import). Azure SDK
+(azure-identity + azure-keyvault-secrets) for runtime secret resolution.
+GitHub Actions CI.
 
 ## Working Agreements (unchanged)
-Tier A/B/C scaffolding. End-of-phase snapshots + quizzes (docs/quiz-log.md) +
-decisions log (docs/decisions.md). WHY-not-WHAT comments. No-hallucination rule.
+Tier A/B/C scaffolding. End-of-phase snapshots + quizzes + decisions log.
+WHY-not-WHAT comments. No-hallucination rule (honored in Phase 10: verified the
+setup-uv action, dbt parse-vs-compile connection behavior, and read the actual
+Phase 4.3b Databricks-provider auth config before diagnosing the CI failure).
 AI collaboration disclosed in README.
 
-## Repo Structure (Phase 9 additions)
-readmission-lakehouse/
-├── databricks.yml, resources/, dbt/, airflow/      # Phases 3-7
-├── src/readmission_lakehouse/{bronze,silver,contracts,tools}/   # 4-5
-│   └── agent/{config,db,guidelines,corpus,profile,graph,app}.py # 8
-├── tests/, scripts/, docs/
-├── readmission-dashboard.pbix                       # Phase 9 (saved into WSL repo
-│                                                    #   via wslpath -w UNC path)
-├── docs/screenshots/                                # dashboard shots for README
-├── .env, .chroma/                                   # gitignored
-└── pyproject.toml
+## Repo Structure (Phase 10 additions)readmission-lakehouse/
+├── .github/workflows/
+│   ├── ci.yml            # NEW: lint (ruff) · types (mypy) · tests (pytest) · dbt parse
+│   └── terraform.yml     # MODIFIED: scoped to fmt + validate (was plan/apply via OIDC)
+├── .pre-commit-config.yaml   # mypy hook gained azure-identity/keyvault + dbt-sql-connector deps
+├── terraform/, dbt/, airflow/, src/, tests/, docs/, scripts/
+├── src/readmission_lakehouse/agent/
+│   ├── config.py         # MODIFIED: get_secret() via DefaultAzureCredential + Key Vault
+│   └── db.py             # MODIFIED: SP secret resolved from Key Vault
+├── readmission-dashboard.pbix, docs/screenshots/
+├── .env                  # now holds only NON-secret identifiers (host/path/client_id)
+├── .chroma/              # gitignored
+└── pyproject.toml        # rag group: + azure-identity, azure-keyvault-secrets
 
 ## Live Azure / Databricks Resources (unchanged)
-RG rl-rg-dev | Storage rlst3e33 | KV rl-kv-3e33 | DBX rl-dbx-3e33 (Premium) |
-cluster rl-dev-interactive (dev-only) | SQL warehouse rl-dbt-warehouse
-(Serverless 2X-Small) — used by Airflow's dbt task, the agent, AND Power BI |
-SP rl-airflow-dev (OAuth M2M). Catalog rl_dev / schemas bronze,silver,gold.
+RG rl-rg-dev | Storage rlst3e33 | Key Vault rl-kv-3e33 (now holds
+`openai-api-key` + `databricks-client-secret`) | DBX rl-dbx-3e33 |
+SQL warehouse rl-dbt-warehouse | SP rl-airflow-dev (OAuth M2M) |
+CI SP rl-gh-actions-dev (OIDC, Azure-plane scoped). Catalog rl_dev.
 
-## Phases 1–8 (complete; detail in git history + earlier snapshots/decisions.md)
-1 Scaffold · 2 Contracts · 3 Infra (Terraform, UC) · 4 Bronze (FHIR ingest) ·
-5 Silver (8 dbt models, contracts) · 6 Gold (star: dims + fact_encounter 664k +
-fact_readmission 12,689; headline 13.64% excl-transfers / 19.28% raw) ·
-7 Airflow (orchestration, retries/timeouts/auto-pause) · 8 Agentic RAG
-(tool-calling LangGraph agent over notes + guidelines + warehouse, Streamlit UI).
+## Phases 1–9 (complete; detail in git history + earlier snapshots)
+1 Scaffold · 2 Contracts · 3 Infra (Terraform, UC, OIDC CI SP) · 4 Bronze ·
+5 Silver · 6 Gold (star; 13.64% excl-transfers headline) · 7 Airflow ·
+8 Agentic RAG (tool-calling LangGraph agent + Streamlit) ·
+9 Power BI dashboard.
 
-## Phase 9 — Power BI Analyst Dashboard
-- **Connection**: Azure Databricks connector → warehouse rl-dbt-warehouse,
-  **Import** mode, **PAT** auth (AAD was the alternative). Loaded gold
-  dim_date, dim_patient, dim_organization, fact_encounter, fact_readmission.
-  Skipped dim_provider (orphaned — deferred NPI join) + dim_condition (reference).
-- **Model**: fact constellation. dim_date + dim_patient → BOTH facts;
-  dim_organization → fact_encounter only. NO fact-to-fact link (Power BI
-  rejected it as an ambiguous path — the dim_patient↔both-facts loop).
-  Role-playing dim_date (admission active, discharge inactive). Marked as date table.
-- **dbt change**: added index_length_of_stay_hours to fact_readmission
-  (denormalized from fact_encounter) so index LOS is sliceable without joining facts.
-- **Measures**: Index Admissions (COUNTROWS); Readmissions (excl. transfers)
-  (CALCULATE+filter); Readmission Rate (excl. transfers) + (raw) (DIVIDE).
-  **Calc column**: Index LOS Bucket (+ hidden sort column).
-- **Dashboard** (one page, dark theme): 4 KPI cards (12,689 / 1,731 / 13.64% /
-  19.28%); days-to-readmission distribution (bimodal — day-0 transfer spike
-  annotated + day 21-30 cluster); rate by index LOS bucket (non-monotonic,
-  3-7 days highest ~28%); rate by gender; rate by race; admissions by year
-  (filtered to 1980+).
-- **Honesty caveat**: demographic + temporal patterns are Synthea generation
-  artifacts, NOT clinical findings — flagged on the page, to be repeated in README.
+## Phase 10 — Productionise (CI + Key Vault)
+### CI (.github/workflows/ci.yml)
+- Two jobs on every push/PR: `quality` (ruff lint + ruff format-check + mypy +
+  pytest) and `dbt` (dbt deps + dbt parse against a placeholder CI profile).
+- No cloud credentials: `dbt parse` validates refs/YAML/the model graph
+  offline; only compile/build/test would need the warehouse. Fast + free.
+- Branch protection: a ruleset on `main` requires both checks to pass; changes
+  now flow through PRs (direct pushes to main are rejected — that surfaced as
+  the first lesson that protection was working).
+
+### Key Vault secret resolution
+- The two genuine secrets (`openai-api-key`, `databricks-client-secret`) moved
+  to Key Vault; the non-secret identifiers (host, http_path, client_id) stay
+  in .env. config.get_secret(env_var, kv_name) resolves env-first (CI/local
+  override) else Key Vault, cached per process.
+- `DefaultAzureCredential` authenticates with NO stored bootstrap secret:
+  locally it uses `az login`; in cloud it would use a managed identity — same
+  code. Verified end-to-end: the agent runs with both secrets absent from .env.
+- Why not a Databricks KV-backed secret scope: nothing inside Databricks
+  consumes a secret (jobs use the UC storage credential); all consumers are
+  external (Airflow, the agent), so app-side DefaultAzureCredential is the fit.
+
+### Terraform CI scoping (the debugging arc)
+- Lock-file churn triggered the existing terraform.yml, whose `plan`/`apply`
+  refresh state and read the UC resources in uc.tf. The CI SP is Azure-plane
+  scoped (OIDC) and was never granted Databricks workspace/metastore access
+  (UC entered Terraform in Phase 4, after the SP was made in Phase 3) →
+  "User not authorized" reading the storage credential.
+- Resolution: scoped the Terraform CI to `fmt -check` + `validate`
+  (`init -backend=false`) — config correctness with no provider API calls, no
+  cloud auth. UC plan/apply stays a local admin operation. Deliberate
+  least-privilege over auto-apply convenience.
 
 ## Phase Status
-[COMPLETED] 1–9.  [PENDING] 10 CI/dbt enhancements + Key Vault hardening | 11 README.
+[COMPLETED] 1–10.  [PENDING] 11 README (capstone).
 
 ## Cost Tracker
 | Phase | Spend |
 |---|---|
-| 1–6 | ~$13 |
-| 7 (Airflow + warehouse) | ~$8 |
-| 8 (OpenAI + warehouse) | ~$1 |
-| 9 (Power BI Desktop free; warehouse import = cents) | ~$0 |
+| 1–9 | ~$22 |
+| 10 (GitHub Actions free for public repos; KV ops negligible) | ~$0 |
 | **Total** | **~$22 of $500** |
 
-## Key Interview Talking Points (Phase 9 additions)
-- **Import vs DirectQuery**: chose Import — static snapshot + serverless
-  auto-stopping warehouse + snappy interaction without billing per click.
-  Production with live data → DirectQuery or scheduled-refresh Import.
-- **Fact constellation**: two facts share conformed dimensions; facts relate to
-  dims, never to each other. The ambiguous-path error was the model *enforcing*
-  that rule (two paths from dim_patient to fact_readmission).
-- **Denormalize onto the grain**: needed index LOS on readmission analysis →
-  put the column on fact_readmission (its grain), didn't join facts.
-- **Three DAX contexts**: measure (model-level, filter-aware) vs calculated
-  column (row-level, stored at refresh) vs visual calculation (visual's output
-  grid only — why AVERAGEX over a model table failed there).
-- **Role-playing dimension**: one active date relationship; USERELATIONSHIP to
-  use the inactive discharge-date relationship inside a specific measure.
-- **Synthetic-data honesty**: naming the gender/temporal patterns as Synthea
-  artifacts (not epidemiology) is a maturity signal — over-claiming would be the
-  failure mode.
+## Key Interview Talking Points (Phase 10 additions)
+- **DefaultAzureCredential = one code path, many identities, zero bootstrap
+  secret** (az login locally, managed identity in cloud, OIDC in CI).
+- **Secret vs identifier**: vaulted only the two real secrets; left host/path/
+  client_id in config. Over-vaulting non-secrets is a smell.
+- **CI without the warehouse**: dbt parse validates the model graph offline;
+  reserved compile/build for an authed tier. Fast, free, no secrets.
+- **Azure-plane vs Databricks-plane privilege boundary**: the Terraform CI
+  failure was the model enforcing that the OIDC SP, scoped to Azure, has no
+  Unity Catalog rights. Chose to scope CI to validate rather than grant the CI
+  identity metastore-admin — least privilege over convenience.
+- **Branch protection / required checks** force a PR workflow; green-checked
+  PRs in history are themselves a signal.
+- **OIDC federated auth** (the CI SP) means no long-lived cloud secret in
+  GitHub — the same no-stored-secret discipline as the app side.
