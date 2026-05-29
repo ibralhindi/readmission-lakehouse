@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    name: lint · types · tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-groups
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy src
+
+      - name: Unit tests
+        run: uv run pytest
+
+  dbt:
+    name: dbt parse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-groups
+
+      - name: Write CI dbt profile
+        # WHY placeholders: `dbt parse` validates refs/YAML/the model graph but
+        # never opens a connection, so these values are never dialled. The
+        # profile NAME must match the `profile:` key in dbt/dbt_project.yml.
+        run: |
+          mkdir -p ci-dbt
+          cat > ci-dbt/profiles.yml <<'EOF'
+          'readmission_dbt':
+            target: ci
+            outputs:
+              ci:
+                type: databricks
+                catalog: rl_dev
+                schema: gold
+                host: example.cloud.databricks.com
+                http_path: /sql/1.0/warehouses/placeholder
+                token: placeholder
+                threads: 4
+          EOF
+
+      - name: dbt deps
+        working-directory: dbt
+        run: uv run dbt deps
+
+      - name: dbt parse
+        working-directory: dbt
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/ci-dbt
+        run: uv run dbt parse
