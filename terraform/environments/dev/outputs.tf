@@ -61,3 +61,23 @@ output "uc_external_locations" {
   value       = { for k, v in databricks_external_location.this : k => v.url }
   description = "Map of container name to external location URL."
 }
+
+output "agent_acr_login_server" {
+  value       = azurerm_container_registry.agent.login_server
+  description = "ACR login server for building/pushing the agent image."
+}
+
+output "agent_identity_client_id" {
+  value       = azurerm_user_assigned_identity.agent.client_id
+  description = "Client ID of the agent's managed identity (set as AZURE_CLIENT_ID on the Container App)."
+}
+
+output "agent_container_app_environment_id" {
+  value       = azurerm_container_app_environment.agent.id
+  description = "Container Apps environment ID (used in 10.5d)."
+}
+
+output "agent_url" {
+  value       = "https://${azurerm_container_app.agent.latest_revision_fqdn}"
+  description = "Public HTTPS URL of the deployed agent."
+}

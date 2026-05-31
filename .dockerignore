@@ -13,3 +13,4 @@ docs/
 *.pbix
 .env
 .github/
+data/
