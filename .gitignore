@@ -72,3 +72,16 @@ dbt/.user.yml
 
 # Power BI
 *.pbix
+
+# generated / build / test artifacts
+/logs/
+.coverage
+coverage.xml
+
+# broaden data + any backend config (currently only subpaths/dev are ignored)
+/data/
+**/backend.conf
+
+# internal working docs + IDE/AI tooling (not deliverables)
+/.cursor/
+docs/project-state.md
