@@ -110,3 +110,24 @@ CI SP rl-gh-actions-dev (OIDC, Azure-plane scoped). Catalog rl_dev.
   PRs in history are themselves a signal.
 - **OIDC federated auth** (the CI SP) means no long-lived cloud secret in
   GitHub — the same no-stored-secret discipline as the app side.
+
+## Phase 10.5 — Containerized agent deployment (Azure Container Apps)
+- Multistage Dockerfile (BuildKit-free for ACR's classic builder): uv-resolved
+  venv, non-root runtime, baked-in .chroma, Streamlit on 8501. .dockerignore
+  excludes data/ + caches (dockerignore ≠ gitignore).
+- Image built locally + `docker push` to ACR rlacr3e33 (token auth, not
+  `az acr build`'s SAS). databricks-sdk moved into the rag group — an implicit
+  runtime dep the lean image surfaced.
+- Terraform (container_app.tf): ACR (Basic, admin disabled), user-assigned MI
+  rl-agent-mi-dev, Log Analytics, Container Apps environment, Container App
+  (scale 0→1, ingress 8501), role grants MI→AcrPull + MI→Key Vault Secrets User.
+- Zero-secret auth chain: MI pulls the image (AcrPull); DefaultAzureCredential →
+  MI (via AZURE_CLIENT_ID) → Key Vault reads openai-api-key +
+  databricks-client-secret; SP secret → warehouse. Non-secret identifiers are
+  plain env vars.
+- Live at output `agent_url` (azurecontainerapps.io). Public, unauthenticated,
+  scale-to-zero. ACR Basic ~$5/mo is the only standing cost.
+- Debugging arc (interview-grade): Microsoft.App provider registration;
+  .dockerignore vs .gitignore (37 GB Synthea data swept into context); ACR's
+  classic builder rejects BuildKit mounts → BuildKit-free Dockerfile; WSL clock
+  skew broke the az-acr-build SAS → pivoted to local build + docker push.
