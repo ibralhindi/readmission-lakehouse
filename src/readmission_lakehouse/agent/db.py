@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import os
 
+from databricks import sql  # type: ignore[attr-defined, unused-ignore]
 from databricks.sdk.core import Config, oauth_service_principal
 
-from databricks import sql  # type: ignore[attr-defined, unused-ignore]
 from readmission_lakehouse.agent.config import get_secret  # also triggers load_dotenv()
 
 
