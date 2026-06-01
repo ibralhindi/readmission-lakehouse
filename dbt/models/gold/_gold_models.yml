@@ -55,20 +55,23 @@ models:
         data_tests:
           - not_null
           - relationships:
-              to: ref('dim_patient')
-              field: patient_key
+              arguments:
+                to: ref('dim_patient')
+                field: patient_key
       - name: admission_date_key
         data_tests:
           - not_null
           - relationships:
-              to: ref('dim_date')
-              field: date_key
+              arguments:
+                to: ref('dim_date')
+                field: date_key
       - name: organization_key
         description: "FK to dim_organization (current version)."
         data_tests:
           - relationships:
-              to: ref('dim_organization')
-              field: organization_key
+              arguments:
+                to: ref('dim_organization')
+                field: organization_key
               config: {severity: warn}
 
   - name: fact_readmission
@@ -79,10 +82,12 @@ models:
       - name: index_encounter_key
         data_tests:
           - not_null
-          - relationships: {to: ref('fact_encounter'), field: encounter_key}
+          - relationships:
+              arguments: {to: ref('fact_encounter'), field: encounter_key}
       - name: patient_key
         data_tests:
           - not_null
-          - relationships: {to: ref('dim_patient'), field: patient_key}
+          - relationships:
+              arguments: {to: ref('dim_patient'), field: patient_key}
       - name: was_readmitted_30d
         data_tests: [not_null]
