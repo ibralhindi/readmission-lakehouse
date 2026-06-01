@@ -91,18 +91,15 @@ resource "azurerm_container_app" "agent" {
   }
 
   template {
-    min_replicas = 0 # scale to zero when idle — no compute cost between demos
+    min_replicas = 0
     max_replicas = 1
 
     container {
       name   = "agent"
-      image  = "${azurerm_container_registry.agent.login_server}/rl-agent:v1"
-      cpu    = 1.0
-      memory = "2Gi"
+      image  = "${azurerm_container_registry.agent.login_server}/rl-agent:v2"
+      cpu    = 2.0
+      memory = "4Gi"
 
-      # Override the start command to add proxy-friendly Streamlit flags — its
-      # XSRF/CORS checks otherwise block the websocket behind the Container Apps
-      # ingress. Set here (not the Dockerfile) so we can tweak without rebuilding.
       command = ["streamlit", "run", "src/readmission_lakehouse/agent/app.py"]
       args = [
         "--server.port=8501",
@@ -112,9 +109,15 @@ resource "azurerm_container_app" "agent" {
         "--server.enableXsrfProtection=false",
       ]
 
-      # AZURE_CLIENT_ID tells DefaultAzureCredential which user-assigned identity
-      # to use. The rest are NON-secret identifiers (same as the old .env). The
-      # real secrets are fetched from Key Vault at runtime via the MI.
+      # Give the app ~100s to acquire the MI token, read Key Vault, and load Chroma
+      # before any health check can kill it.
+      startup_probe {
+        transport               = "TCP"
+        port                    = 8501
+        interval_seconds        = 10
+        failure_count_threshold = 10
+      }
+
       env {
         name  = "AZURE_CLIENT_ID"
         value = azurerm_user_assigned_identity.agent.client_id
