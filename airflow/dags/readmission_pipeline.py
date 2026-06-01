@@ -55,7 +55,7 @@ with DAG(
     description="Medallion refresh: bronze -> silver -> dbt (silver + gold).",
     default_args=default_args,
     start_date=pendulum.datetime(2026, 5, 1, tz="UTC"),
-    schedule="@daily",  # realistic cadence; DAG stays PAUSED — trigger manually
+    schedule=None,  # manual-trigger portfolio DAG
     catchup=False,  # don't backfill a run for every day since start_date
     tags=["readmission", "databricks", "dbt", "medallion"],
     dagrun_timeout=timedelta(hours=2),  # whole-run backstop (normal run ~42 min)

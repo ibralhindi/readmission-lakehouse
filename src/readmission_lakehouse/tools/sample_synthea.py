@@ -8,6 +8,7 @@ deterministic so downstream pipeline behavior is easier to reproduce.
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
 from typing import Any, cast
 
@@ -62,7 +63,7 @@ class SamplingSummaryRow(BaseModel):
     type=int,
     default=42,
     show_default=True,
-    help="Reserved for future sampling modes.",
+    help="Random seed used to select patients.",
 )
 def cli(fhir_dir: str, out_dir: str, n_patients: int, seed: int) -> None:
     """Write a patient-filtered subset of local Synthea NDJSON files."""
@@ -126,10 +127,6 @@ def derive_resource_type(input_path: Path) -> str:
 def load_selected_patient_ids(patient_file: Path, n_patients: int, seed: int) -> set[str]:
     """Select the deterministic patient subset used by the sampler CLI."""
 
-    # The CLI keeps a ``seed`` option now so a future randomized strategy can reuse the same
-    # interface without breaking callers, even though the current sampler is deterministic.
-    del seed
-
     # --- Section: Short-circuit invalid sample sizes ---
     if n_patients <= 0:
         return set()
@@ -144,8 +141,10 @@ def load_selected_patient_ids(patient_file: Path, n_patients: int, seed: int) ->
         if isinstance(patient_id, str):
             patient_ids.append(patient_id)
 
-    # --- Section: Return a stable subset ---
-    return set(sorted(patient_ids)[:n_patients])
+    # --- Section: Return a seeded random subset ---
+    rng = random.Random(seed)
+    sample_size = min(n_patients, len(patient_ids))
+    return set(rng.sample(sorted(patient_ids), sample_size))
 
 
 def build_patient_reference_tokens(selected_patient_ids: set[str]) -> set[str]:

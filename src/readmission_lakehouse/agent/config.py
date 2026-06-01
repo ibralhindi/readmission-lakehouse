@@ -33,7 +33,11 @@ NOTES_COLLECTION = "patient_notes"
 GUIDELINES_COLLECTION = "guidelines"
 
 # --- Azure Key Vault (holds the actual secrets) ---
-KEY_VAULT_URL = "https://rl-kv-3e33.vault.azure.net/"
+KEY_VAULT_URL = os.environ.get("AZURE_KEY_VAULT_URL", "https://rl-kv-3e33.vault.azure.net/")
+
+# --- Databricks catalog/schema identifiers ---
+CATALOG = os.environ.get("DATABRICKS_CATALOG", "rl_dev")
+GOLD_SCHEMA = os.environ.get("DATABRICKS_GOLD_SCHEMA", "gold")
 
 
 @lru_cache(maxsize=1)

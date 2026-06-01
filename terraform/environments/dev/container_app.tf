@@ -4,7 +4,7 @@
 # (AcrPull), the same no-secrets discipline as everywhere else.
 resource "azurerm_container_registry" "agent" {
   name                = "${var.project_prefix}acr${var.project_suffix}" # alphanumeric only, globally unique
-  resource_group_name = azurerm_resource_group.main.name                # TODO: confirm your RG resource name (rg.tf)
+  resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   sku                 = "Basic"
   admin_enabled       = false
@@ -54,7 +54,7 @@ resource "azurerm_role_assignment" "agent_acr_pull" {
 #     assignment, not an access policy. "Key Vault Secrets User" = get/list
 #     secrets only — least privilege (not Officer/Administrator).
 resource "azurerm_role_assignment" "agent_kv_secrets" {
-  scope                            = module.keyvault.id # TODO: confirm your keyvault module's id output name
+  scope                            = module.keyvault.id
   role_definition_name             = "Key Vault Secrets User"
   principal_id                     = azurerm_user_assigned_identity.agent.principal_id
   skip_service_principal_aad_check = true

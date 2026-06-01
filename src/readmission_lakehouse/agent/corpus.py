@@ -15,13 +15,17 @@ from langchain_openai import OpenAIEmbeddings
 
 from readmission_lakehouse.agent import db
 from readmission_lakehouse.agent.config import (
+    CATALOG,
     CHROMA_DIR,
     EMBED_MODEL,
+    GOLD_SCHEMA,
     GUIDELINES_COLLECTION,
     NOTES_COLLECTION,
     require_openai_key,
 )
 from readmission_lakehouse.agent.guidelines import GUIDELINES
+
+GOLD_TABLE_PREFIX = f"{CATALOG}.{GOLD_SCHEMA}"
 
 
 def _notes_sql(n_patients: int) -> str:
@@ -31,8 +35,8 @@ def _notes_sql(n_patients: int) -> str:
     return f"""
         WITH cohort AS (
             SELECT DISTINCT dp.patient_id
-            FROM rl_dev.gold.fact_readmission fr
-            JOIN rl_dev.gold.dim_patient dp ON fr.patient_key = dp.patient_key
+            FROM {GOLD_TABLE_PREFIX}.fact_readmission fr
+            JOIN {GOLD_TABLE_PREFIX}.dim_patient dp ON fr.patient_key = dp.patient_key
             ORDER BY dp.patient_id
             LIMIT {int(n_patients)}
         )

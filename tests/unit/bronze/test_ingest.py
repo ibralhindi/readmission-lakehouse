@@ -1,8 +1,7 @@
 """Tests for bronze ingestion metadata logic.
 
-These tests are the SPEC for add_ingestion_metadata.
-Implement the function in src/readmission_lakehouse/bronze/ingest.py until all
-tests pass.
+These tests verify that bronze ingestion metadata is complete, stable across
+reruns, and derived only from source row content.
 """
 
 from __future__ import annotations
