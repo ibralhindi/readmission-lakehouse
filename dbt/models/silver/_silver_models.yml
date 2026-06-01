@@ -32,18 +32,21 @@ models:
         data_tests:
           - not_null
           - relationships:
-              to: ref('patient')
-              field: patient_id
+              arguments:
+                to: ref('patient')
+                field: patient_id
       - name: status
         data_tests:
           - accepted_values:
-              # FHIR Encounter status valueset
-              values: ['planned', 'arrived', 'triaged', 'in-progress', 'onleave', 'finished', 'cancelled', 'entered-in-error', 'unknown']
+              arguments:
+                # FHIR Encounter status valueset
+                values: ['planned', 'arrived', 'triaged', 'in-progress', 'onleave', 'finished', 'cancelled', 'entered-in-error', 'unknown']
       - name: encounter_class_code
         data_tests:
           - accepted_values:
-              # FHIR v3 ActCode subset Synthea uses
-              values: ['IMP', 'AMB', 'EMER', 'HH', 'OBSENC', 'SS', 'VR', 'PRENC']
+              arguments:
+                # FHIR v3 ActCode subset Synthea uses
+                values: ['IMP', 'AMB', 'EMER', 'HH', 'OBSENC', 'SS', 'VR', 'PRENC']
               # config severity=warn — if Synthea adds a code we don't expect,
               # we want to know but not fail the build.
               config:
@@ -55,7 +58,8 @@ models:
         data_tests:
           # Length-of-stay should be non-negative. Custom expression test.
           - dbt_utils.expression_is_true:
-              expression: ">= 0 OR length_of_stay_hours IS NULL"
+              arguments:
+                expression: ">= 0 OR length_of_stay_hours IS NULL"
               config:
                 severity: warn
   - name: condition
@@ -65,7 +69,8 @@ models:
       - name: patient_id
         data_tests:
           - not_null
-          - relationships: {to: ref('patient'), field: patient_id}
+          - relationships:
+              arguments: {to: ref('patient'), field: patient_id}
       - name: snomed_code
         data_tests: [not_null]
 
@@ -76,7 +81,8 @@ models:
       - name: patient_id
         data_tests:
           - not_null
-          - relationships: {to: ref('patient'), field: patient_id}
+          - relationships:
+              arguments: {to: ref('patient'), field: patient_id}
       - name: snomed_code
         data_tests: [not_null]
   - name: organization
@@ -97,8 +103,9 @@ models:
         data_tests:
           - not_null
           - relationships:
-              to: ref('patient')
-              field: patient_id
+              arguments:
+                to: ref('patient')
+                field: patient_id
               config: {severity: warn}   # unvalidated source — warn, don't fail
 
   - name: medication_request
@@ -109,6 +116,7 @@ models:
         data_tests:
           - not_null
           - relationships:
-              to: ref('patient')
-              field: patient_id
+              arguments:
+                to: ref('patient')
+                field: patient_id
               config: {severity: warn}
