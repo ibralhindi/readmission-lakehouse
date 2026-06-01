@@ -18,6 +18,10 @@ from pyspark.sql import Row, SparkSession
 from pyspark.sql.functions import col, struct, udf
 from pyspark.sql.types import StringType
 
+INGESTION_METADATA_COLUMNS = frozenset(
+    {"_load_ts", "_source_file", "_row_hash", "_ingestion_run_id"}
+)
+
 
 class ValidationResult(TypedDict):
     bronze_table: str
@@ -48,8 +52,6 @@ def build_validation_udf(contract: type[BaseModel]):  # type: ignore[no-untyped-
             return None
         except ValidationError as e:
             return str(e)
-        except Exception as e:
-            return str(e)
 
     return udf(_validate, StringType())
 
@@ -78,7 +80,7 @@ def validate_resource(
 
     validate_udf = build_validation_udf(contract)
 
-    original_cols = [c for c in df.columns if not c.startswith("_")]
+    original_cols = [c for c in df.columns if c not in INGESTION_METADATA_COLUMNS]
 
     df_with_err = df.withColumn("_validation_error", validate_udf(struct(*original_cols)))
 

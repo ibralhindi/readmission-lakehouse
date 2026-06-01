@@ -1,4 +1,4 @@
-.PHONY: install lint format test clean tree
+.PHONY: install lint format test test-dags clean tree
 
 install:
 	uv sync --all-groups
@@ -15,6 +15,11 @@ format:
 
 test:
 	uv run pytest
+
+test-dags:
+	ENV_FILE_PATH=/dev/null AIRFLOW_UID=50000 AIRFLOW__CORE__FERNET_KEY="" \
+	docker compose -f airflow/docker-compose.yaml run --rm --entrypoint bash airflow-cli \
+	-lc "pytest /opt/airflow/tests"
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov

@@ -8,7 +8,12 @@ patient's conditions live in their clinical notes, retrieved via RAG.
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from readmission_lakehouse.agent import db
+from readmission_lakehouse.agent.config import CATALOG, GOLD_SCHEMA
+
+GOLD_TABLE_PREFIX = f"{CATALOG}.{GOLD_SCHEMA}"
 
 
 def list_cohort_patients(n_patients: int = 150) -> list[dict]:
@@ -21,8 +26,8 @@ def list_cohort_patients(n_patients: int = 150) -> list[dict]:
             MAX(dp.gender) AS gender,
             MAX(FLOOR(DATEDIFF(current_date(), CAST(dp.birth_date AS DATE)) / 365.25)) AS age,
             MAX(CASE WHEN fr.was_readmitted_30d_excl_transfers THEN 1 ELSE 0 END) AS ever_readmitted
-        FROM rl_dev.gold.fact_readmission fr
-        JOIN rl_dev.gold.dim_patient dp ON fr.patient_key = dp.patient_key
+        FROM {GOLD_TABLE_PREFIX}.fact_readmission fr
+        JOIN {GOLD_TABLE_PREFIX}.dim_patient dp ON fr.patient_key = dp.patient_key
         GROUP BY dp.patient_id
         ORDER BY dp.patient_id
         LIMIT {int(n_patients)}
@@ -32,8 +37,13 @@ def list_cohort_patients(n_patients: int = 150) -> list[dict]:
 
 def get_patient_profile(patient_id: str) -> dict:
     """Latest IMP index admission + demographics + readmission outcome for one
-    patient. patient_id comes from list_cohort_patients (a controlled UUID), so
-    the f-string is safe here; production would bind it as a query parameter."""
+    patient."""
+    try:
+        patient_id = str(UUID(patient_id))
+    except ValueError as exc:
+        msg = f"Invalid patient_id '{patient_id}': expected a UUID string."
+        raise ValueError(msg) from exc
+
     sql = f"""
         SELECT
             dp.patient_id,
@@ -52,11 +62,11 @@ def get_patient_profile(patient_id: str) -> dict:
             fr.was_readmitted_30d_excl_transfers,
             MAX(fr.was_readmitted_30d_excl_transfers)
                 OVER (PARTITION BY dp.patient_id) AS ever_readmitted_30d
-        FROM rl_dev.gold.fact_readmission fr
-        JOIN rl_dev.gold.fact_encounter fe ON fr.index_encounter_key = fe.encounter_key
-        JOIN rl_dev.gold.dim_patient dp ON fr.patient_key = dp.patient_key
-        LEFT JOIN rl_dev.gold.dim_date d_adm ON fr.index_admission_date_key = d_adm.date_key
-        LEFT JOIN rl_dev.gold.dim_date d_dis ON fr.index_discharge_date_key = d_dis.date_key
+        FROM {GOLD_TABLE_PREFIX}.fact_readmission fr
+        JOIN {GOLD_TABLE_PREFIX}.fact_encounter fe ON fr.index_encounter_key = fe.encounter_key
+        JOIN {GOLD_TABLE_PREFIX}.dim_patient dp ON fr.patient_key = dp.patient_key
+        LEFT JOIN {GOLD_TABLE_PREFIX}.dim_date d_adm ON fr.index_admission_date_key = d_adm.date_key
+        LEFT JOIN {GOLD_TABLE_PREFIX}.dim_date d_dis ON fr.index_discharge_date_key = d_dis.date_key
         WHERE dp.patient_id = '{patient_id}'
         ORDER BY d_adm.full_date DESC
         LIMIT 1

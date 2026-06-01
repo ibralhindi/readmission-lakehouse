@@ -1,6 +1,7 @@
-"""Tests for silver validation logic — the SPEC for validate_resource.
+"""Tests for silver validation UDF behavior.
 
-Implement src/readmission_lakehouse/silver/validate.py until these pass.
+These tests verify that valid rows pass and contract violations return
+validation error text for quarantine routing.
 """
 
 from __future__ import annotations
