@@ -12,7 +12,7 @@
 --   - subject.reference (patient_id for joining demographics + comorbidities)
 --
 -- The hospitalization sub-resource (discharge_disposition, etc.) is only
--- populated on ~0.1% of Synthea encounters per the Phase 2 profiler.
+-- populated on ~0.1% of Synthea encounters per the Synthea profiling output.
 -- We extract it anyway — when present, it's gold for risk modelling.
 
 WITH bronze_encounter AS (

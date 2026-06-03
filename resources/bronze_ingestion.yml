@@ -1,6 +1,5 @@
 # Bronze ingestion job.
-# One job, one task to start (Practitioner smoke test). We'll add tasks for
-# the other 13 resources in Step 4.7.
+# One job with a for_each task over the 14 selected FHIR resources.
 
 resources:
   jobs:

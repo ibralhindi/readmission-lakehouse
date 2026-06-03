@@ -10,7 +10,7 @@
 -- someone needs the raw structure.
 --
 -- One row per patient. No SCD here (we capture demographic changes via
--- dbt snapshots in Step 5.4).
+-- dbt snapshots).
 
 WITH bronze_patient AS (
     SELECT *

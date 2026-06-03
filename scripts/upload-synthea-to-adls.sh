@@ -19,7 +19,7 @@ CONTAINER="raw"
 # PATCH and times out on slow home uplinks even for small .gz files.
 DEST_BASE="https://${ACCOUNT_NAME}.blob.core.windows.net/${CONTAINER}/synthea"
 
-# Bronzed resources (the 14 we agreed in Phase 2's data dictionary). Other
+# Bronzed resources (the 14 FHIR resources selected for the bronze layer). Other
 # resources are left local to keep storage spend minimal — we can upload more
 # later if needed.
 BRONZED_RESOURCES=(
