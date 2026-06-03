@@ -8,7 +8,7 @@
 -- Silver model: rl_dev.silver.observation
 --
 -- READS FROM BRONZE, NOT silver_validated — Observation has no Pydantic
--- contract yet (see docs/decisions.md, contract-coverage gap). When a contract
+-- contract yet. When a contract
 -- is added, switch the source to silver_validated.observation_valid.
 --
 -- Observation uses a polymorphic value[x]: each row has exactly ONE of

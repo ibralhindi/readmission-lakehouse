@@ -1,8 +1,7 @@
 """Catalogue of bronze→silver-valid validations.
 
 Maps each bronze table to its Pydantic contract. The 6 entities with Phase 2
-contracts get full validation; Observation and MedicationRequest are deferred
-(see docs/decisions.md for the contract-coverage gap).
+contracts get full validation; Observation and MedicationRequest are deferred.
 """
 
 from dataclasses import dataclass
