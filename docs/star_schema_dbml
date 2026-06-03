@@ -59,7 +59,7 @@ Table fact_encounter {
 
 Table fact_readmission {
   readmission_key varchar [pk]
-  index_encounter_key varchar [ref: > fact_encounter.encounter_key]
+  index_encounter_key varchar [note: 'degenerate reference to the index encounter — drill-through only, not an active relationship']
   patient_key varchar [ref: > dim_patient.patient_key]
   index_admission_date_key int [ref: > dim_date.date_key]
   days_to_readmission int

@@ -55,7 +55,7 @@ flagged AS (
 SELECT
     -- Keys (join back to fact_encounter for the surrogate keys)
     fe.encounter_key AS readmission_key,     -- PK; grain = index admission, so 1:1 with the index encounter
-    fe.encounter_key AS index_encounter_key, -- FK to fact_encounter
+    fe.encounter_key AS index_encounter_key, -- degenerate reference for drill-through
     fe.patient_key,                          -- FK to dim_patient
     f.encounter_id   AS index_encounter_id,  -- degenerate
     fe.admission_date_key  AS index_admission_date_key,

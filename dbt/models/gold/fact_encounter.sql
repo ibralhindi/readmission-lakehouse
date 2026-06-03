@@ -15,7 +15,6 @@
 -- Provider (attending practitioner) is DEFERRED: the encounter references
 -- practitioners by NPI identifier (Practitioner?identifier=us-npi|xxx), not by
 -- resource id, so joining to dim_provider needs NPI extraction on both sides.
--- Noted in docs/decisions.md.
 
 WITH encounter AS (
     SELECT * FROM {{ ref('encounter') }}
