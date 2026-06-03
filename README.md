@@ -138,29 +138,48 @@ An Import-mode Power BI dashboard over the gold star schema: the headline readmi
 
 ## Running it locally
 
-**Prerequisites:** Python 3.12, [uv](https://docs.astral.sh/uv/), Docker, an Azure subscription, a Databricks workspace, and an OpenAI API key.
+**Prerequisites:** Python 3.12, [uv](https://docs.astral.sh/uv/), Docker, the Databricks CLI, an Azure subscription, a Databricks workspace, and an OpenAI API key.
 
 ```bash
-# 1. install dependencies
-uv sync --all-groups
+# 1. install dependencies + pre-commit hooks
+make install
 
 # 2. provision infrastructure (review the plan first)
 cd terraform/environments/dev
 terraform init
 terraform apply -var-file=terraform.tfvars
+```
 
-# 3. run the pipeline transformations
-cd ../../../dbt
-dbt build            # builds silver + gold, runs all tests
+**3. Prepare the source data.** Generate a Synthea FHIR R4 dataset with the included `synthea.properties` (Massachusetts, seed 42, population 10,000, FHIR NDJSON bulk export), then upload it to ADLS:
 
-# 4. build the agent's vector store, then run the agent
-python -m readmission_lakehouse.agent.corpus     # generates the local .chroma vector store
+```bash
+./scripts/upload-synthea-to-adls.sh
+```
+
+**4. Deploy the Databricks jobs** (bronze ingestion + silver validation) from the asset bundle:
+
+```bash
+databricks bundle deploy -t dev
+```
+
+**5. Run the pipeline.** The `readmission_pipeline` Airflow DAG orchestrates it end to end, it triggers the bronze and silver Databricks jobs, then runs `dbt build` (silver models + SCD2 snapshots + gold star schema + tests):
+
+```bash
+docker compose -f airflow/docker-compose.yaml up   # then trigger the DAG (manual schedule)
+```
+
+> The DAG authenticates to Databricks via the `databricks_default` connection and reads the service-principal secret from the Airflow Variable `databricks_sp_client_secret` (set both before triggering). To iterate on transforms alone, run `cd dbt && dbt build` directly.
+
+**6. Run the agent.**
+
+```bash
+python -m readmission_lakehouse.agent.corpus   # builds the local .chroma vector store
 uv run --group rag streamlit run src/readmission_lakehouse/agent/app.py
 ```
 
-> **Note:** the agent's vector store (`.chroma/`) is generated locally and is not committed. Run the corpus build step above before building the container image, which bakes it in.
+> **Note:** the vector store (`.chroma/`) is generated locally and not committed; run the corpus step before building the image, which bakes it in.
 
-Secrets are never read from the repo: locally the agent authenticates to Key Vault via your `az login` session; in the cloud it uses its managed identity. Non-secret identifiers (warehouse host/path, catalog) come from environment variables with sensible defaults.
+Secrets are never read from the repo: locally the agent authenticates to Key Vault via your `az login` session; in the cloud it uses its managed identity. Non-secret identifiers come from a local `.env` (see `agent/.env.example`).
 
 ## Scope, limitations & production roadmap
 
