@@ -17,7 +17,7 @@
 }}
 
 -- SCD2 history of patient demographics. Reads from the silver patient model;
--- gold.dim_patient (Phase 6) will build on this snapshot so the dimension
+-- gold.dim_patient builds on this snapshot so the dimension
 -- carries full validity-window history.
 --
 -- check_cols: only the demographic attributes that can plausibly change. We

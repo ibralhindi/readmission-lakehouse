@@ -1,7 +1,7 @@
 """Catalogue of bronze→silver-valid validations.
 
-Maps each bronze table to its Pydantic contract. The 6 entities with Phase 2
-contracts get full validation; Observation and MedicationRequest are deferred.
+Maps each bronze table to its Pydantic contract. The six entities with explicit
+Pydantic contracts get full validation; Observation and MedicationRequest are deferred.
 """
 
 from dataclasses import dataclass
@@ -74,7 +74,7 @@ SILVER_VALIDATIONS: list[SilverValidation] = [
     ),
 ]
 
-# TODO(phase-5-followup): write Pydantic contracts for Observation and
+# TODO(validation-coverage): write Pydantic contracts for Observation and
 # MedicationRequest, then add entries here. Their silver dbt models currently
 # read directly from bronze (see dbt/models/silver/observation.sql,
 # medication_request.sql) — bypassing the validation pattern.

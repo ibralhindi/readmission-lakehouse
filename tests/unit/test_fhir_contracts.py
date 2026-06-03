@@ -161,7 +161,7 @@ def test_encounter_contract_populates_alias_backed_class_field(
 
 def test_encounter_contract_allows_null_reason_code() -> None:
     """FHIR Encounter.reasonCode is 0..* — a routine visit with no reason
-    must validate. Regression test for the Phase 5 quarantine finding."""
+    must validate. Regression test for the nullable reasonCode quarantine issue."""
     minimal_encounter = {
         "id": "encounter-001",
         "status": "finished",

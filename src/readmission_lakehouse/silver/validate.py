@@ -1,7 +1,7 @@
 """Bronze→Silver validation via Pydantic contracts (quarantine pattern).
 
-Each bronze table has an associated Pydantic contract from Phase 2. We
-apply the contract to every row via a PySpark UDF, then split:
+Supported bronze tables have associated Pydantic contracts. We apply each
+contract to every row via a PySpark UDF, then split:
   - Rows that validate → silver.<table>_valid
   - Rows that fail validation → silver.<table>_quarantine (with error attached)
 

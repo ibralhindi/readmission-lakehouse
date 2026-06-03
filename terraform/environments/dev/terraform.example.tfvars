@@ -1,5 +1,5 @@
 # Example values for terraform.tfvars. Copy to terraform.tfvars and fill in,
-# OR (recommended) run scripts/setup-phase3-azure.sh which generates it.
+# OR (recommended) run scripts/setup-azure.sh which generates it.
 #
 # This file IS committed to git. Never put real subscription IDs here.
 

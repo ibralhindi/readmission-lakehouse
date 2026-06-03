@@ -10,7 +10,7 @@ output "workspace_url" {
 
 output "workspace_resource_id" {
   value       = azurerm_databricks_workspace.this.workspace_id
-  description = "The numeric Databricks workspace ID (NOT the Azure resource ID — used by the databricks provider in Phase 4)."
+  description = "The numeric Databricks workspace ID (NOT the Azure resource ID — used by the Databricks provider)."
 }
 
 output "access_connector_id" {

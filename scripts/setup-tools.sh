@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install Azure CLI, Terraform, and tflint for Phase 3.
+# Install Azure CLI, Terraform, and tflint for local infrastructure setup.
 # Idempotent — checks for each tool before installing.
 
 set -euo pipefail  # exit on error, undefined var, or pipe failure

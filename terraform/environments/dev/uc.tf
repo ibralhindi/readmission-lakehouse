@@ -16,8 +16,9 @@ resource "databricks_storage_credential" "access_connector" {
 # --- External locations ---
 # Pairs (cloud path, credential). UC enforces "data at this path is accessed via
 # this credential". Even though the access connector already has Storage Blob Data
-# Contributor on the whole SA via Phase 3, UC requires THIS additional layer of
-# binding before tables/queries can read from these paths.
+# Blob data access on the storage account is granted to the access connector in
+# the Databricks module; UC requires THIS additional layer of binding before
+# tables/queries can read from these paths.
 locals {
   uc_containers = ["bronze", "silver", "gold", "raw"]
 }

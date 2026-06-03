@@ -5,8 +5,8 @@ sources:
     catalog: rl_dev
     schema: bronze
     description: >
-      Bronze layer — raw FHIR resources ingested from Synthea via the Phase 4
-      asset-bundle job. Schema-on-read inferred from NDJSON. Each table has
+      Bronze layer — raw FHIR resources ingested from Synthea via the
+      bronze-ingestion asset-bundle job. Schema-on-read inferred from NDJSON. Each table has
       _load_ts, _source_file, _row_hash, _ingestion_run_id metadata columns.
 
     tables:
