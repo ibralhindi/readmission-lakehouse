@@ -73,7 +73,7 @@ The dimensional model:
 
 ![Star schema](docs/Star_Schema.png)
 
-Data flows from synthetic FHIR records into raw storage, through PySpark bronze ingestion, into a contract-validated silver layer, and finally into a dbt-built gold star schema that both the dashboard and the agent read from. Airflow orchestrates the run; Terraform provisions every resource; Unity Catalog governs catalogs, schemas, and external locations.
+Data flows from synthetic FHIR records into raw storage, through PySpark bronze ingestion, into a contract-validated silver layer, and finally into a dbt-built gold star schema that both the dashboard and the agent read from. Airflow orchestrates the run; Terraform provisions every resource; Unity Catalog governs catalogs, schemas, and external locations. For the full design rationale, component-by-component deep-dives, and the operational lessons from deployment, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Results
 
