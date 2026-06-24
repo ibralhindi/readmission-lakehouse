@@ -45,9 +45,10 @@ default_args = {
     "retry_delay": timedelta(minutes=2),
     "retry_exponential_backoff": True,  # 2 -> 4 -> 8 min between retries
     "max_retry_delay": timedelta(minutes=15),
-    "execution_timeout": timedelta(minutes=45),  # per-task ceiling; a hung task is
-    # killed -> on_kill cancels the
-    # Databricks run -> cluster stops billing
+    # Per-task ceiling. DatabricksRunNowOperator runs synchronously (not deferrable);
+    # a timed-out task triggers the operator's built-in on_kill, which cancels the
+    # remote Databricks run so the cluster stops billing.
+    "execution_timeout": timedelta(minutes=45),
 }
 
 with DAG(
