@@ -285,6 +285,8 @@ The heart of the document — what was chosen, why, what the alternative was, an
 
 **Facts relate through conformed dimensions, not fact-to-fact.** Both facts carry `patient_key` and date keys, so they connect via `dim_patient`/`dim_date`. `fact_readmission.index_encounter_key` is a *degenerate reference* for drill-through, not an active relationship. *Why:* a direct fact-to-fact relationship creates ambiguous join paths in the BI model. (The dbt build does join `fact_encounter` to populate surrogate keys — that's a build-time lookup, a separate concern from the semantic-model relationship.)
 
+**`dim_condition` is a reference dimension, not a fact-linked one — no bridge table.** Conditions are many-to-many with encounters (one encounter has many diagnoses; one diagnosis recurs across encounters), so wiring them to `fact_encounter` would require an `encounter_condition` bridge table. *Why not:* nothing needs that grain. The readmission metric depends on admission timing and the inpatient flag, not diagnoses; and the agent retrieves a patient's conditions from clinical notes via RAG (see below), not from a structured fact. So `dim_condition` is kept as a deduplicated SNOMED reference dimension by design. *Trigger to revisit:* if scope grows toward clinical analytics — readmission rate *by diagnosis*, or conditions as predictive features — conditions move onto the critical path and the bridge becomes worth building. Building it now would be complexity for zero downstream queries.
+
 **Airflow DAG that's more than glue.** A per-task `execution_timeout` bounds each task; because the `DatabricksRunNowOperator`s run synchronously (not deferrable), a timed-out task triggers the operator's built-in `on_kill`, which cancels the remote Databricks run so the cluster stops billing; retries use exponential backoff; jobs are triggered by `job_id` (stable across bundle redeploys) not by the dev-mode display name. *Why:* cost-safety and idempotent-friendly orchestration, defensible as design rather than wiring.
 
 **Databricks Asset Bundle for the jobs.** Bronze and silver run as bundle-defined jobs (`resources/*.yml`, `databricks.yml`), deployed with `databricks bundle deploy`. *Why:* jobs-as-code — reproducible, versioned, deployable, the analogue of IaC for Databricks workloads.
@@ -356,6 +358,7 @@ Hard-won specifics worth knowing before touching the deployment:
 - **SCD2 (slowly changing dimension, type 2):** keeps history by versioning dimension rows with validity windows (`valid_from`/`valid_to`/`is_current`).
 - **As-of join:** joining a fact to the dimension version valid at the event's timestamp (point-in-time correctness).
 - **Degenerate reference:** a key carried on a fact that points at another fact for drill-through, not modelled as an active relationship.
+- **Bridge table:** a table of key pairs that resolves a many-to-many relationship between a fact and a dimension into two one-to-many joins (not used here — see §5, `dim_condition`).
 - **Index admission:** the admission being evaluated for a subsequent 30-day readmission.
 - **IMP:** the FHIR encounter class code for inpatient encounters.
 - **RAG:** retrieval-augmented generation — grounding an LLM's output in retrieved documents.
