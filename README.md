@@ -179,7 +179,7 @@ uv run --group rag streamlit run src/readmission_lakehouse/agent/app.py
 
 > **Note:** the vector store (`.chroma/`) is generated locally and not committed; run the corpus step before building the image, which bakes it in.
 
-Secrets are never read from the repo: locally the agent authenticates to Key Vault via your `az login` session; in the cloud it uses its managed identity. Non-secret identifiers come from a local `.env` (see `agent/.env.example`).
+Secrets are never read from the repo: locally the agent authenticates to Key Vault via your `az login` session; in the cloud it uses its managed identity. Non-secret identifiers come from a local `.env` at the repo root (copy from `.env.example`).
 
 ## Scope, limitations & production roadmap
 

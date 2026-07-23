@@ -52,7 +52,7 @@ Annotated index from `git ls-files`. One line per directory and file.
 ```
 readmission-lakehouse/
 ├── .dockerignore              # Docker build-context excludes (data/, terraform/, dbt/, etc.) — independent of .gitignore
-├── .env.example               # Template for Azure/Databricks/OpenAI env vars (local dev; secrets not committed)
+├── .env.example               # Non-secret Databricks host/path/client-id + Key Vault URL for local agent
 ├── .github/                   # GitHub Actions CI/CD
 │   └── workflows/
 │       ├── ci.yml             # Push/PR: ruff lint+format, mypy, pytest (60% cov gate), dbt parse (offline)
@@ -69,7 +69,7 @@ readmission-lakehouse/
 ├── uv.lock                    # Locked dependency versions for reproducible uv sync
 │
 ├── airflow/                   # Local Airflow 3 stack (Docker) orchestrating the medallion refresh
-│   ├── .env.example           # Template for Airflow-specific env (Fernet key, UID, etc.)
+│   ├── .env.example           # AIRFLOW_UID for Docker Compose volume ownership
 │   ├── .gitignore             # Airflow-local ignore rules
 │   ├── Dockerfile             # Extends apache/airflow:3.2.1 with Databricks provider + dbt-databricks
 │   ├── docker-compose.yaml    # CeleryExecutor Airflow cluster (Postgres, Redis, webserver, scheduler, worker)
@@ -170,7 +170,6 @@ readmission-lakehouse/
 │   │   ├── sample_synthea.py  # CLI: deterministic downsample of NDJSON to a patient subset
 │   │   └── profile_synthea.py # CLI: Markdown summary of local Synthea NDJSON shape/coverage
 │   └── agent/                 # LangGraph RAG care-manager assistant
-│       ├── .env.example       # Non-secret Databricks host/path/client-id template for local agent
 │       ├── __init__.py        # Package marker
 │       ├── config.py          # Model names, Chroma paths, Key Vault secret resolution
 │       ├── db.py              # Databricks SQL warehouse queries via SP OAuth M2M
