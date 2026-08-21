@@ -56,12 +56,16 @@ def build_validation_udf(contract: type[BaseModel]):  # type: ignore[no-untyped-
     return udf(_validate, StringType())
 
 
-def validate_resource(
+def validate_resource(  # noqa: PLR0913
     spark: SparkSession,
     bronze_table: str,
     valid_table: str,
     quarantine_table: str,
     contract: type[BaseModel],
+    fmt: str = "delta",  # Parameterised for tests only. Spark 3.5 + OSS Delta
+    # rejects overwrite-as-truncate locally in a way Databricks
+    # doesn't; the integration tests write Parquet, since the
+    # storage format isn't what they exercise.
 ) -> ValidationResult:
     """Validate all rows in bronze_table against contract; split into valid/quarantine.
 
@@ -71,6 +75,8 @@ def validate_resource(
         valid_table: fully-qualified target for valid rows.
         quarantine_table: fully-qualified target for invalid rows.
         contract: Pydantic model class.
+        fmt: Spark write format. Defaults to delta; parquet is used in local
+            integration tests where OSS Delta cannot overwrite via truncate.
 
     Returns:
         ValidationResult with row counts for logging.
@@ -93,8 +99,8 @@ def validate_resource(
     df_valid = df_with_err.filter(col("_validation_error").isNull()).drop("_validation_error")
     df_quarantine = df_with_err.filter(col("_validation_error").isNotNull())
 
-    df_valid.write.format("delta").mode("overwrite").saveAsTable(valid_table)
-    df_quarantine.write.format("delta").mode("overwrite").saveAsTable(quarantine_table)
+    df_valid.write.format(fmt).mode("overwrite").saveAsTable(valid_table)
+    df_quarantine.write.format(fmt).mode("overwrite").saveAsTable(quarantine_table)
 
     valid_count = spark.table(valid_table).count()
     quarantine_count = spark.table(quarantine_table).count()
