@@ -27,7 +27,7 @@ class ValidationResult(TypedDict):
     bronze_table: str
     valid_table: str
     quarantine_table: str
-    total_rows: int
+    source_rows: int
     valid_rows: int
     quarantine_rows: int
 
@@ -56,12 +56,16 @@ def build_validation_udf(contract: type[BaseModel]):  # type: ignore[no-untyped-
     return udf(_validate, StringType())
 
 
-def validate_resource(
+def validate_resource(  # noqa: PLR0913
     spark: SparkSession,
     bronze_table: str,
     valid_table: str,
     quarantine_table: str,
     contract: type[BaseModel],
+    fmt: str = "delta",  # Parameterised for tests only. Spark 3.5 + OSS Delta
+    # rejects overwrite-as-truncate locally in a way Databricks
+    # doesn't; the integration tests write Parquet, since the
+    # storage format isn't what they exercise.
 ) -> ValidationResult:
     """Validate all rows in bronze_table against contract; split into valid/quarantine.
 
@@ -71,12 +75,15 @@ def validate_resource(
         valid_table: fully-qualified target for valid rows.
         quarantine_table: fully-qualified target for invalid rows.
         contract: Pydantic model class.
+        fmt: Spark write format. Defaults to delta; parquet is used in local
+            integration tests where OSS Delta cannot overwrite via truncate.
 
     Returns:
         ValidationResult with row counts for logging.
     """
 
     df = spark.table(bronze_table)
+    source_count = df.count()
 
     validate_udf = build_validation_udf(contract)
 
@@ -84,20 +91,35 @@ def validate_resource(
 
     df_with_err = df.withColumn("_validation_error", validate_udf(struct(*original_cols)))
 
+    # Two writes follow, and each is a separate action. Without caching, Spark
+    # recomputes the lineage per action and every row goes through the Pydantic
+    # UDF twice — the most expensive operation in the job.
+    df_with_err.cache()
+
     df_valid = df_with_err.filter(col("_validation_error").isNull()).drop("_validation_error")
     df_quarantine = df_with_err.filter(col("_validation_error").isNotNull())
 
-    df_valid.write.format("delta").mode("overwrite").saveAsTable(valid_table)
-    df_quarantine.write.format("delta").mode("overwrite").saveAsTable(quarantine_table)
+    df_valid.write.format(fmt).mode("overwrite").saveAsTable(valid_table)
+    df_quarantine.write.format(fmt).mode("overwrite").saveAsTable(quarantine_table)
 
     valid_count = spark.table(valid_table).count()
     quarantine_count = spark.table(quarantine_table).count()
-    total = valid_count + quarantine_count
+
+    df_with_err.unpersist()
+
+    if valid_count + quarantine_count != source_count:
+        raise ValueError(
+            f"Row count reconciliation failed for {bronze_table}: "
+            f"source={source_count:,}, valid={valid_count:,}, "
+            f"quarantine={quarantine_count:,} "
+            f"(lost {source_count - valid_count - quarantine_count:,})"
+        )
+
     return ValidationResult(
         bronze_table=bronze_table,
         valid_table=valid_table,
         quarantine_table=quarantine_table,
-        total_rows=total,
+        source_rows=source_count,
         valid_rows=valid_count,
         quarantine_rows=quarantine_count,
     )

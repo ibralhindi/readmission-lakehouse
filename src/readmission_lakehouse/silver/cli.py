@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 
 from pyspark.sql import SparkSession
 
@@ -29,6 +30,17 @@ def main() -> None:
         choices=[v.name for v in SILVER_VALIDATIONS],
         help="FHIR resource type to validate.",
     )
+    parser.add_argument(
+        "--max-quarantine-rate",
+        type=float,
+        default=0.01,
+        help="Fail if the quarantined proportion exceeds this (default: 1%).",
+    )
+    parser.add_argument(
+        "--allow-empty-source",
+        action="store_true",
+        help="Permit an empty bronze table instead of failing.",
+    )
     args = parser.parse_args()
 
     validation = next(v for v in SILVER_VALIDATIONS if v.name == args.resource_name)
@@ -47,7 +59,23 @@ def main() -> None:
         contract=validation.contract,
     )
     logger.info(
-        f"Validated {result['total_rows']:,} rows: "
+        f"Validated {result['source_rows']:,} rows: "
         f"{result['valid_rows']:,} valid, "
         f"{result['quarantine_rows']:,} quarantined."
     )
+    if result["source_rows"] == 0:
+        if not args.allow_empty_source:
+            logger.error(
+                f"{validation.bronze_table} is empty — upstream ingestion may have failed."
+            )
+            sys.exit(1)
+        logger.warning(f"{validation.bronze_table} is empty; skipping quarantine-rate check.")
+    else:
+        rate = result["quarantine_rows"] / result["source_rows"]
+        if rate > args.max_quarantine_rate:
+            logger.error(
+                f"Quarantine rate {rate:.2%} exceeds threshold {args.max_quarantine_rate:.2%} "
+                f"({result['quarantine_rows']:,} of {result['source_rows']:,} rows)."
+            )
+            sys.exit(1)
+        logger.info(f"Quarantine rate {rate:.2%}, within threshold.")

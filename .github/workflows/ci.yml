@@ -29,8 +29,8 @@ jobs:
       - name: Type check
         run: uv run mypy src
 
-      - name: Unit tests
-        run: uv run pytest
+      - name: Tests
+        run: uv run pytest --cov-fail-under=60
 
   dbt:
     name: dbt parse

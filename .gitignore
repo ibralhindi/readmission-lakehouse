@@ -50,6 +50,9 @@ htmlcov/
 .coverage
 coverage.xml
 *.cover
+# Local Spark/Hive metastore residue from integration tests
+/metastore_db/
+/derby.log
 
 # Private docs
 docs/private/

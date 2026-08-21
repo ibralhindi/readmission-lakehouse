@@ -5,7 +5,7 @@ from pyspark.sql import SparkSession
 
 
 @pytest.fixture(scope="session")
-def spark() -> SparkSession:
+def spark(tmp_path_factory: pytest.TempPathFactory) -> SparkSession:
     """Session-scoped local Spark session for unit tests.
 
     Session scope (not function) because creating a SparkSession takes ~5 seconds;
@@ -14,10 +14,12 @@ def spark() -> SparkSession:
     spark.sql.shuffle.partitions=1: defaults to 200, which is wasteful for the
     tiny dataframes used in tests. One partition makes tests finish in milliseconds.
     """
+    warehouse = tmp_path_factory.mktemp("warehouse")
     return (
         SparkSession.builder.master("local[*]")
-        .appName("rl-bronze-tests")
+        .appName("rl-tests")
+        .config("spark.sql.warehouse.dir", str(warehouse))
         .config("spark.sql.shuffle.partitions", "1")
-        .config("spark.ui.enabled", "false")  # skip the localhost:4040 web UI
+        .config("spark.ui.enabled", "false")
         .getOrCreate()
     )
