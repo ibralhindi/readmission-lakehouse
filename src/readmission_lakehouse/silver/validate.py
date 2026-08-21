@@ -27,7 +27,7 @@ class ValidationResult(TypedDict):
     bronze_table: str
     valid_table: str
     quarantine_table: str
-    total_rows: int
+    source_rows: int
     valid_rows: int
     quarantine_rows: int
 
@@ -77,12 +77,18 @@ def validate_resource(
     """
 
     df = spark.table(bronze_table)
+    source_count = df.count()
 
     validate_udf = build_validation_udf(contract)
 
     original_cols = [c for c in df.columns if c not in INGESTION_METADATA_COLUMNS]
 
     df_with_err = df.withColumn("_validation_error", validate_udf(struct(*original_cols)))
+
+    # Two writes follow, and each is a separate action. Without caching, Spark
+    # recomputes the lineage per action and every row goes through the Pydantic
+    # UDF twice — the most expensive operation in the job.
+    df_with_err.cache()
 
     df_valid = df_with_err.filter(col("_validation_error").isNull()).drop("_validation_error")
     df_quarantine = df_with_err.filter(col("_validation_error").isNotNull())
@@ -92,12 +98,22 @@ def validate_resource(
 
     valid_count = spark.table(valid_table).count()
     quarantine_count = spark.table(quarantine_table).count()
-    total = valid_count + quarantine_count
+
+    df_with_err.unpersist()
+
+    if valid_count + quarantine_count != source_count:
+        raise ValueError(
+            f"Row count reconciliation failed for {bronze_table}: "
+            f"source={source_count:,}, valid={valid_count:,}, "
+            f"quarantine={quarantine_count:,} "
+            f"(lost {source_count - valid_count - quarantine_count:,})"
+        )
+
     return ValidationResult(
         bronze_table=bronze_table,
         valid_table=valid_table,
         quarantine_table=quarantine_table,
-        total_rows=total,
+        source_rows=source_count,
         valid_rows=valid_count,
         quarantine_rows=quarantine_count,
     )
