@@ -27,7 +27,6 @@ dev = [
     "pre-commit>=4.0.0",
     "ipykernel>=6.0.0",
     "pyspark>=3.5.0,<4",
-    "delta-spark>=3.2.0,<4",
     "dbt-databricks>=1.9.0",
 ]
 rag = [
