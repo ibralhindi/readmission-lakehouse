@@ -20,6 +20,7 @@ As a concrete end-to-end result, the platform computes a **13.64%** 30-day readm
   - [Engineering highlights](#engineering-highlights)
   - [The AI agent](#the-ai-agent)
   - [Dashboard](#dashboard)
+  - [Testing](#testing)
   - [Running it locally](#running-it-locally)
   - [Scope, limitations & production roadmap](#scope-limitations--production-roadmap)
   - [Built with AI assistance](#built-with-ai-assistance)
@@ -44,7 +45,7 @@ The project is framed in healthcare, but the engineering — contract-validated 
 ## What it does
 
 - **Ingests** raw FHIR R4 clinical records and lands them through a **medallion architecture** (bronze → silver → gold) on Azure Data Lake Storage and Delta Lake.
-- **Validates** records against **data contracts** (Pydantic models of the FHIR resources), quarantining anything that fails rather than letting it corrupt downstream tables.
+- **Validates** records against **data contracts** (Pydantic models of the FHIR resources), quarantining anything that fails rather than letting it corrupt downstream tables — with row-count reconciliation and a quarantine-rate threshold that fail the job rather than let it succeed on partial data.
 - **Models** a **star schema** with conformed dimensions and **SCD2 history** on the dimensions that change over time.
 - **Computes** the 30-day readmission fact, including transfer-exclusion logic so inter-facility transfers aren't miscounted as readmissions.
 - **Orchestrates** the pipeline end-to-end with **Apache Airflow**.
@@ -109,9 +110,10 @@ The ~5.6-point gap between the raw and transfer-excluded rates is itself a findi
 A few decisions worth calling out, with the reasoning behind them:
 
 - **Medallion architecture with enforced contracts.** Bronze preserves raw fidelity; silver validates each record against a Pydantic model of the FHIR resource and quarantines failures with a reason, so a malformed record degrades one row instead of poisoning the table. Validation exceptions are caught narrowly (`ValidationError`) so genuine bugs fail fast rather than being silently quarantined.
+- **Controls that actually fail the job.** The quarantine pattern's weakness is that a run can succeed on partial data. Three guards close that: the source is counted independently and the job raises if `valid + quarantine ≠ source`; the job exits non-zero if the quarantine rate exceeds a threshold; and an empty source table fails rather than reporting a clean run over zero rows. The failure paths are unit-tested, because the synthetic source quarantines nothing and real runs never exercise them.
 - **Point-in-time correctness via SCD2 as-of joins.** Patient, organization, and practitioner dimensions capture history through dbt snapshots. `fact_encounter` joins each encounter to the **patient-dimension version valid at admission time** (an as-of join on the SCD2 validity window) so a fact sees the dimension as it was when the event happened, not as it is now. The stable organization reference uses a current-version join: a deliberate mixed pattern (as-of where history matters, current for stable references). The practitioner join is deferred, since encounters reference practitioners by NPI rather than resource id.
 - **Transfer-aware readmission logic.** The readmission fact excludes inter-facility transfers, which would otherwise inflate the rate — the difference between a defensible 13.64% and a misleading 19.28%.
-- **Tested transformations.** 69 dbt tests (uniqueness, not-null, referential integrity, accepted values) plus a Python unit suite gate the pipeline; CI runs `dbt parse` offline so model validity is checked without warehouse credentials.
+- **Tested at three levels.** 69 dbt tests (uniqueness, not-null, referential integrity, accepted values) on the models; Python unit tests on contracts, ingestion metadata, the validation UDF and the CLI guards; and an integration suite exercising the silver path end to end — registry lookup, UDF closure serialisation, the valid/quarantine split and reconciliation, with nothing mocked. CI runs `dbt parse` offline so model validity is checked without warehouse credentials.
 - **Everything as code.** All Azure and Databricks resources are provisioned with modular Terraform; Unity Catalog governs data access through storage credentials and external locations rather than account keys.
 - **Zero-secrets deployment.** The agent is containerized and deployed to Azure Container Apps under a **user-assigned managed identity**. `DefaultAzureCredential` resolves to that identity in the cloud (and to a developer login locally — the same code path), pulls the image from a private registry (AcrPull), and reads the OpenAI key and Databricks service-principal secret from Key Vault (Key Vault Secrets User). No secret exists in the image, the repository, or the container's environment.
 - **CI/CD and security scanning.** GitHub Actions runs lint, type-checks, tests, and `dbt parse` on every push, with a separate Terraform `fmt`/`validate` job; the git history was scanned for leaked secrets before publishing.
@@ -135,6 +137,23 @@ It then drafts a structured, grounded brief with `gpt-4o-mini`, citing the guide
 ![Power BI dashboard](docs/PowerBI_Dashboard_Screenshot.png)
 
 An Import-mode Power BI dashboard over the gold star schema: the headline readmission rate, breakdowns by patient and clinical attributes, and the drivers behind the risk.
+
+## Testing
+
+| Layer | Covers |
+|---|---|
+| Unit (`tests/unit/`) | Contracts, bronze provenance columns, the validation UDF, the CLI guards, agent config and profile |
+| Integration (`tests/integration/`) | The silver path composed end to end: registry lookup, UDF closure serialisation, valid/quarantine split, reconciliation |
+| dbt data tests | 69 tests across silver and gold — uniqueness, not-null, referential integrity, accepted values |
+| DAG integrity | A DagBag import test, so a broken reference fails in CI rather than at runtime |
+
+```bash
+uv run pytest                     # everything
+uv run pytest tests/unit -q       # fast; no table writes
+uv run pytest tests/integration   # writes tables to a temp warehouse
+```
+
+The failure paths are covered deliberately. The Synthea dataset quarantines zero rows, so a real run never exercises the reconciliation guard, the quarantine threshold, or the empty-source check — the tests force those conditions instead. A guard that has never been seen to fire isn't a guard.
 
 ## Running it locally
 

@@ -33,8 +33,8 @@ def main() -> None:
     parser.add_argument(
         "--max-quarantine-rate",
         type=float,
-        default=0.005,
-        help="Fail if the quarantined proportion exceeds this.",
+        default=0.01,
+        help="Fail if the quarantined proportion exceeds this (default: 1%).",
     )
     parser.add_argument(
         "--allow-empty-source",
