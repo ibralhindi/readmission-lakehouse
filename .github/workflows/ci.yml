@@ -12,6 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Spark 3.5 (via Hadoop's UserGroupInformation) calls Subject.getSubject,
+      # which Java 23+ no longer supports. ubuntu-latest's default JDK moved past
+      # that, so pin Java 17 rather than inherit whatever the runner ships.
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
