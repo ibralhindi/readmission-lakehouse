@@ -38,7 +38,14 @@ resource "azurerm_container_app_environment" "agent" {
   resource_group_name        = azurerm_resource_group.main.name
   location                   = azurerm_resource_group.main.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.agent.id
-  tags                       = local.common_tags
+  # Azure archived the original Consumption-only environment for inactivity
+  # (Nov 2026); restoring it migrated it to the workload-profiles type.
+  # Declared here so Terraform matches Azure and doesn't try to revert it.
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
+  tags = local.common_tags
 }
 
 # --- Role grants for the agent identity ---
@@ -66,6 +73,7 @@ resource "azurerm_container_app" "agent" {
   container_app_environment_id = azurerm_container_app_environment.agent.id
   resource_group_name          = azurerm_resource_group.main.name
   revision_mode                = "Single"
+  workload_profile_name        = "Consumption"
   tags                         = local.common_tags
 
   # One identity, two uses: pulls the image from ACR, and (via
