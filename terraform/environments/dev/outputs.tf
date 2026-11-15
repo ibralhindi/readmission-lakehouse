@@ -78,6 +78,6 @@ output "agent_container_app_environment_id" {
 }
 
 output "agent_url" {
-  value       = "https://${azurerm_container_app.agent.ingress[0].fqdn}"
+  value       = try("https://${azurerm_container_app.agent.ingress[0].fqdn}", null)
   description = "Stable public HTTPS URL of the agent (routes to the active revision)."
 }
